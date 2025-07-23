@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 YouTube Gaming Video Uploader
 ================================
@@ -15,6 +16,7 @@ import os
 import sys
 import re
 import time
+import traceback
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
@@ -220,8 +222,37 @@ class YouTubeUploader:
             else:
                 title = file_path.stem
                 
-            # Bereinige Titel (ersetze Unterstriche durch Leerzeichen)
+            # Bereinige Titel (ersetze Unterstriche durch Leerzeichen und behebe Encoding-Probleme)
             title = title.replace('_', ' ').strip()
+            
+            # Behebe häufige Encoding-Probleme
+            # Zuerst versuche korrekte UTF-8 Dekodierung
+            try:
+                # Wenn der Titel bereits problematische Zeichen hat, versuche Dekodierung
+                if any(ord(c) > 127 and ord(c) < 256 for c in title):
+                    # Versuche als latin1 zu interpretieren und als utf-8 zu dekodieren
+                    title_bytes = title.encode('latin1', errors='ignore')
+                    title = title_bytes.decode('utf-8', errors='replace')
+            except:
+                pass
+            
+            # Zusätzliche spezifische Fixes für häufige Probleme
+            encoding_fixes = {
+                'WINDMÜLE': 'WINDMÜHLE',  # Korrigiere WINDMÜLE zu WINDMÜHLE
+                'MÜHLE': 'MÜHLE',         # Stelle sicher dass MÜHLE korrekt ist
+                'MÜLE': 'MÜHLE',          # Korrigiere MÜLE zu MÜHLE
+                '�': 'Ü',                # Ersetze Replacement Character
+                '?': 'Ü',                # Fallback für Fragezeichen an Ü-Positionen
+                'M�LE': 'MÜHLE',
+                'M�HLE': 'MÜHLE', 
+                'M?LE': 'MÜHLE',
+                'M?HLE': 'MÜHLE',
+                'WINDM�LE': 'WINDMÜHLE',
+                'WINDM?LE': 'WINDMÜHLE'
+            }
+            
+            for broken, fixed in encoding_fixes.items():
+                title = title.replace(broken, fixed)
             
             # Bestimme Aufnahmedatum
             try:
@@ -419,31 +450,51 @@ class YouTubeUploader:
                 media_body=media
             )
             
-            # Upload mit Progress Bar
+            # Upload mit tqdm Progress Bar
             response = None
-            error = None
             retry = 0
             
-            while response is None:
-                try:
-                    print(f"{Fore.BLUE}📤 Lade hoch: {video['title']}")
-                    
-                    status, response = request.next_chunk()
-                    
-                    if status:
-                        progress = int(status.progress() * 100)
-                        print(f"{Fore.CYAN}📊 Upload Progress: {progress}%")
+            # Erstelle Progress Bar mit Dateigröße
+            file_size_mb = video['file_size_mb']
+            
+            with tqdm(
+                total=100,
+                desc=f"📤 {video['title'][:30]}",
+                unit="%",
+                bar_format="{l_bar}{bar}| {n:.1f}% [{elapsed}<{remaining}, {rate_fmt}]",
+                colour='green'
+            ) as pbar:
+                
+                last_progress = 0
+                
+                while response is None:
+                    try:
+                        status, response = request.next_chunk()
                         
-                except googleapiclient.errors.HttpError as e:
-                    if e.resp.status in [500, 502, 503, 504]:
-                        # Retriable errors
-                        retry += 1
-                        if retry > 3:
+                        if status:
+                            progress = int(status.progress() * 100)
+                            # Update Progress Bar
+                            increment = progress - last_progress
+                            if increment > 0:
+                                pbar.update(increment)
+                                last_progress = progress
+                                
+                        elif response:
+                            # Upload complete
+                            pbar.update(100 - last_progress)
+                            
+                    except googleapiclient.errors.HttpError as e:
+                        if e.resp.status in [500, 502, 503, 504]:
+                            # Retriable errors
+                            retry += 1
+                            if retry > 3:
+                                pbar.write(f"{Fore.RED}❌ Zu viele Wiederholungsversuche")
+                                raise e
+                            pbar.write(f"{Fore.YELLOW}⚠️  Retriable error {e.resp.status}, retry {retry}/3")
+                            time.sleep(2 ** retry)
+                        else:
+                            pbar.write(f"{Fore.RED}❌ HTTP Error: {e}")
                             raise e
-                        print(f"{Fore.YELLOW}⚠️  Retriable error {e.resp.status}, retry {retry}/3")
-                        time.sleep(2 ** retry)
-                    else:
-                        raise e
             
             if 'id' in response:
                 print(f"{Fore.GREEN}✅ Upload erfolgreich! Video-ID: {response['id']}")
