@@ -250,7 +250,19 @@ class YouTubeUploader:
                 'WINDM�LE': 'WINDMÜHLE',
                 'WINDM?LE': 'WINDMÜHLE',
                 'H�NGT': 'HÄNGT',         # Korrigiere H�NGT zu HÄNGT
-                'H?NGT': 'HÄNGT'          # Fallback für H?NGT zu HÄNGT
+                'H?NGT': 'HÄNGT',         # Fallback für H?NGT zu HÄNGT
+                # Zusätzliche Unicode-Escape-Fixes
+                '\\udcc4': 'Ä',          # Unicode escape für Ä
+                '\\udcdc': 'Ü',          # Unicode escape für Ü
+                '\\udcf6': 'ö',          # Unicode escape für ö
+                '\\udce4': 'ä',          # Unicode escape für ä
+                '\\udcfc': 'ü',          # Unicode escape für ü
+                '\\udcdf': 'ß',          # Unicode escape für ß
+                # Weitere problematische Darstellungen
+                'H\\udcc4NGT': 'HÄNGT',  # Spezifisch für diesen Fall
+                'VIEH H\\udcc4NGT': 'VIEH HÄNGT',
+                'M\\udcdcLE': 'MÜHLE',
+                'WINDM\\udcdcLE': 'WINDMÜHLE'
             }
             
             for broken, fixed in encoding_fixes.items():
@@ -335,6 +347,21 @@ class YouTubeUploader:
         
         return playlist_info
     
+    def _clean_title_for_display(self, title: str) -> str:
+        """Bereinigt Titel für saubere Konsolen-Ausgabe"""
+        import re
+        
+        # Entferne Unicode-Escape-Sequenzen wie \udcc4
+        clean_title = re.sub(r'\\udc[0-9a-fA-F]{2}', '', title)
+        
+        # Entferne andere problematische Unicode-Zeichen
+        clean_title = re.sub(r'[^\x20-\x7E\u00C0-\u017F]', '', clean_title)
+        
+        # Cleanup und Normalisierung
+        clean_title = clean_title.strip()
+        
+        return clean_title if clean_title else title
+    
     def _categorize_videos(self, videos: List[Dict]):
         """Kategorisiert gefundene Videos für Statistiken"""
         for video in videos:
@@ -358,14 +385,15 @@ class YouTubeUploader:
         print(f"{Fore.CYAN}{'='*70}")
         
         for i, video in enumerate(videos, 1):
-            print(f"\n{Fore.WHITE}{i}. {Fore.YELLOW}{video['title']}")
+            clean_title = self._clean_title_for_display(video['title'])
+            print(f"\n{Fore.WHITE}{i}. {Fore.YELLOW}{clean_title}")
             print(f"   📁 Pfad: {video['folder_structure']}")
             print(f"   📊 Größe: {video['file_size_mb']} MB")
             print(f"   📅 Aufnahme: {video['record_date'].strftime('%d.%m.%Y - %H:%M Uhr')}")
             
             # Playlist-Analyse
             playlist_info = video['playlist_info']
-            print(f"\n{Fore.BLUE}🔍 Playlist-Analyse für '{video['title']}':")
+            print(f"\n{Fore.BLUE}🔍 Playlist-Analyse für '{clean_title}':")
             print(f"   - Hauptordner: {playlist_info['main_folder']}")
             if playlist_info['game_folder']:
                 print(f"   - Spielordner: {playlist_info['game_folder']}")
@@ -400,8 +428,9 @@ class YouTubeUploader:
         success_count = 0
         
         for i, video in enumerate(videos, 1):
+            clean_title = self._clean_title_for_display(video['title'])
             print(f"\n{Fore.CYAN}{'='*70}")
-            print(f"{Fore.CYAN}📤 Upload {i}/{len(videos)}: {video['title']}")
+            print(f"{Fore.CYAN}📤 Upload {i}/{len(videos)}: {clean_title}")
             print(f"{Fore.CYAN}{'='*70}")
             
             try:
@@ -418,11 +447,11 @@ class YouTubeUploader:
                     success_count += 1
                     self.stats['uploaded_videos'] += 1
                     
-                    print(f"{Fore.GREEN}✅ '{video['title']}' erfolgreich als {self.default_visibility.upper()} hochgeladen!")
+                    print(f"{Fore.GREEN}✅ '{clean_title}' erfolgreich als {self.default_visibility.upper()} hochgeladen!")
                     
                 else:
                     self.stats['failed_uploads'] += 1
-                    print(f"{Fore.RED}❌ Upload fehlgeschlagen für: {video['title']}")
+                    print(f"{Fore.RED}❌ Upload fehlgeschlagen für: {clean_title}")
                 
                 # Pause zwischen Uploads
                 if i < len(videos):
@@ -431,7 +460,7 @@ class YouTubeUploader:
                     
             except Exception as e:
                 self.stats['failed_uploads'] += 1
-                print(f"{Fore.RED}❌ Fehler beim Upload von '{video['title']}': {str(e)}")
+                print(f"{Fore.RED}❌ Fehler beim Upload von '{clean_title}': {str(e)}")
                 
         # Upload-Zusammenfassung
         self._print_upload_summary(success_count, len(videos))
@@ -468,14 +497,25 @@ class YouTubeUploader:
             file_size_bytes = video['file_size']
             file_size_mb = video['file_size_mb']
             
-            print(f"{Fore.BLUE}📤 Starte Upload: {video['title']} ({file_size_mb:.1f} MB)")
+            clean_title = self._clean_title_for_display(video['title'])
+            print(f"{Fore.BLUE}📤 Starte Upload: {clean_title} ({file_size_mb:.1f} MB)")
             
             # Bereinige Titel für Progress Bar (entferne problematische Unicode-Zeichen)
-            clean_title = video['title'].encode('ascii', errors='replace').decode('ascii')
+            progress_title = clean_title
+            
+            # Entferne Unicode-Escape-Sequenzen
+            import re
+            progress_title = re.sub(r'\\udc[0-9a-fA-F]{2}', '', progress_title)
+            
+            # Fallback auf ASCII mit Replacement für saubere Darstellung
+            progress_title = progress_title.encode('ascii', errors='replace').decode('ascii')
+            
+            # Entferne Replacement-Character
+            progress_title = progress_title.replace('?', '').strip()
             
             with tqdm(
                 total=file_size_bytes,
-                desc=f"📤 {clean_title[:30]}",
+                desc=f"📤 {progress_title[:30]}",
                 unit="B",
                 unit_scale=True,
                 unit_divisor=1024,
@@ -550,8 +590,11 @@ class YouTubeUploader:
     
     def _create_video_metadata(self, video: Dict) -> Dict:
         """Erstellt Metadaten für YouTube-Video"""
-        # Generiere Beschreibung
-        description = self._generate_description(video)
+        # Verwende den bereinigten Titel für YouTube
+        clean_title = self._clean_title_for_display(video['title'])
+        
+        # Generiere Beschreibung mit bereinigtem Titel
+        description = self._generate_description(video, clean_title)
         
         # Generiere Tags
         tags = self._generate_tags(video)
@@ -559,7 +602,7 @@ class YouTubeUploader:
         # Video-Metadaten für YouTube API
         body = {
             'snippet': {
-                'title': video['title'],
+                'title': clean_title,  # Verwende bereinigten Titel
                 'description': description,
                 'tags': tags,
                 'categoryId': '20',  # Gaming category
@@ -577,10 +620,13 @@ class YouTubeUploader:
         
         return body
     
-    def _generate_description(self, video: Dict) -> str:
+    def _generate_description(self, video: Dict, clean_title: Optional[str] = None) -> str:
         """Generiert automatische Beschreibung für das Video"""
+        # Verwende bereinigten Titel falls verfügbar, sonst Original
+        title_for_description = clean_title if clean_title else self._clean_title_for_display(video['title'])
+        
         description_parts = [
-            f"Gameplay Video: {video['title']}",
+            f"Gameplay Video: {title_for_description}",
             ""
         ]
         
@@ -635,9 +681,10 @@ class YouTubeUploader:
         try:
             playlist_info = video['playlist_info']
             potential_playlists = playlist_info['potential_playlists']
+            clean_title = self._clean_title_for_display(video['title'])
             
             if not potential_playlists:
-                print(f"{Fore.YELLOW}⚠️  Keine Playlists für Video '{video['title']}' gefunden")
+                print(f"{Fore.YELLOW}⚠️  Keine Playlists für Video '{clean_title}' gefunden")
                 return
             
             print(f"{Fore.BLUE}📋 Füge Video zu {len(potential_playlists)} Playlist(s) hinzu...")
@@ -665,7 +712,8 @@ class YouTubeUploader:
                 print(f"{Fore.RED}❌ Video konnte zu keiner Playlist hinzugefügt werden")
                 
         except Exception as e:
-            print(f"{Fore.YELLOW}⚠️  Warnung: Playlist-Zuordnung fehlgeschlagen: {str(e)}")
+            clean_title = self._clean_title_for_display(video.get('title', 'Unbekannt'))
+            print(f"{Fore.YELLOW}⚠️  Warnung: Playlist-Zuordnung für '{clean_title}' fehlgeschlagen: {str(e)}")
     
     def _get_or_create_playlist(self, playlist_name: str) -> Optional[str]:
         """Holt oder erstellt eine Playlist"""
