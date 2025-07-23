@@ -52,7 +52,10 @@ class YouTubeUploader:
     MAIN_FOLDERS = ['SPIEL AUFNAHMEN', 'WITZIGE MOMENTE', 'GESCHNITTE MOMENTE']
     
     # YouTube API Scopes
-    SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
+    SCOPES = [
+        'https://www.googleapis.com/auth/youtube.upload',
+        'https://www.googleapis.com/auth/youtube'
+    ]
     
     def __init__(self, recordings_path: Optional[str] = None, debug_mode: bool = False):
         """Initialisierung des YouTube Uploaders"""
@@ -743,6 +746,16 @@ Konfiguration über .env-Datei:
         # Preview-Modus
         if args.preview:
             uploader.preview_videos(videos)
+            
+            # Teste auch die YouTube-Authentifizierung im Preview-Modus
+            print(f"\n{Fore.CYAN}🔑 Teste YouTube-Authentifizierung...")
+            if uploader.authenticate_youtube():
+                print(f"{Fore.GREEN}✅ YouTube-Authentifizierung erfolgreich getestet!")
+            else:
+                print(f"{Fore.RED}❌ YouTube-Authentifizierung fehlgeschlagen!")
+                print(f"{Fore.YELLOW}💡 Überprüfen Sie Ihre credentials.json Datei.")
+                sys.exit(1)
+            
             print(f"\n{Fore.CYAN}👁️  Preview-Modus: Kein Upload durchgeführt")
             sys.exit(0)
         

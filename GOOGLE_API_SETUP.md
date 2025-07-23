@@ -64,12 +64,12 @@ Beim ersten Start des Uploaders:
 
 ```bash
 source venv/bin/activate
-python uploader.py --preview
+python uploader.py --preview  # Testet jetzt auch die Authentifizierung
 ```
 
 1. Ein Browser-Fenster öffnet sich automatisch
 2. Melden Sie sich mit Ihrem Google-Konto an
-3. Bestätigen Sie die Berechtigungen für die App
+3. Bestätigen Sie die Berechtigungen für die App (sowohl Upload als auch Playlist-Management)
 4. Der Browser zeigt "Die Authentifizierung ist abgeschlossen"
 5. Eine `token.json` Datei wird automatisch erstellt
 
@@ -82,6 +82,12 @@ python uploader.py --preview
 ### Problem: "redirect_uri_mismatch"
 - Stellen Sie sicher, dass Sie "Desktop application" gewählt haben
 - Nicht "Web application"
+
+### Problem: "Insufficient Permission" oder "Insufficient authentication scopes"
+- Die App hat nicht die nötigen Berechtigungen für alle Features
+- **Lösung:** Löschen Sie `token.json` und authentifizieren Sie sich neu
+- Akzeptieren Sie **alle** Berechtigungen im Browser-Dialog
+- Der neue Scope umfasst sowohl Video-Upload als auch Playlist-Management
 
 ### Problem: "access_denied"
 - Überprüfen Sie, ob Ihr Google-Konto als "Test user" hinzugefügt wurde
