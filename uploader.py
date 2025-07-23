@@ -496,6 +496,11 @@ class YouTubeUploader:
         if video['playlist_info']['game_folder']:
             description_parts.append(f"Spiel: {video['playlist_info']['game_folder']}")
         
+        # Kategorie hinzufügen (Unterordner)
+        if video['playlist_info']['sub_folders']:
+            category = video['playlist_info']['sub_folders'][-1]  # Letzter/spezifischster Unterordner
+            description_parts.append(f"Kategorie: {category}")
+        
         # Aufnahmedatum
         record_date_str = video['record_date'].strftime('%d.%m.%Y - %H:%M Uhr')
         description_parts.append(f"Aufgenommen am: {record_date_str}")
