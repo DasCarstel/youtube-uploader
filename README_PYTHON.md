@@ -97,11 +97,62 @@ AUFNAHMEN/
 ## 🎯 Video-Erkennung
 
 Das Skript sucht nach Videos mit folgenden Kriterien:
+
+### Einzelne Video-Dateien:
 - **Präfixe:** `merged_` oder `unmergable_`
 - **Formate:** .mp4, .avi, .mov, .mkv, .webm, .flv
 - **Ausschluss:** Bereits hochgeladene Videos (Präfix `uploaded_`)
 
-## 🔧 Konfiguration
+### Folder-basierte Uploads (NEU):
+- **Ordner-Präfixe:** `merged_` oder `unmergable_` im Ordnernamen
+- **Verhalten:** Alle Videos im Ordner werden automatisch erkannt und hochgeladen
+- **Typ-Bestimmung:** Video-Typ wird vom Ordner-Präfix abgeleitet
+- **Hierarchie:** Unterordner werden in die Playlist-Struktur einbezogen
+
+### Beispiel für Folder-basierte Uploads:
+```
+AUFNAHMEN/SPIEL AUFNAHMEN/Grand Theft Auto V/merged_LUSTIGE_MOMENTE/
+├── video1.mp4          # Wird als 'merged' erkannt
+├── video2.mp4          # Wird als 'merged' erkannt
+└── subfolder/
+    └── video3.mp4      # Wird als 'merged' erkannt
+
+# Playlist-Struktur: "SPIEL AUFNAHMEN > Grand Theft Auto V > LUSTIGE_MOMENTE"
+```
+
+## 🎮 Wichtige Features im Detail
+
+### Multi-Playlist-Support
+Videos werden automatisch zu **allen hierarchischen Playlists** hinzugefügt:
+```
+Beispiel: AUFNAHMEN/SPIEL AUFNAHMEN/Star Wars Jedi Fallen Order/BUG/video.mp4
+
+Wird hinzugefügt zu:
+1. "BUG" (primäre Playlist)
+2. "Star Wars Jedi Fallen Order" 
+3. "SPIEL AUFNAHMEN"
+```
+
+### Umfassende Encoding-Fixes
+Das System behebt automatisch häufige Encoding-Probleme:
+- `WINDM�LE` → `WINDMÜHLE`
+- `H�NGT` → `HÄNGT` 
+- `VIEH H�NGT` → `VIEH HÄNGT`
+- Unicode-Escape-Sequenzen (`\udcc4` → `Ä`)
+- Sowohl in der Konsolen-Ausgabe als auch in YouTube-Metadaten
+
+### Verbesserte Upload-Anzeige
+- Saubere Ein-Zeilen-Progress-Bar mit 5MB Chunks
+- Prozentanzeige und geschätzte Restzeit
+- Retry-Information bei temporären Fehlern
+- Farbkodierte Status-Meldungen
+
+### Status-Beschreibungen
+Jedes Video erhält automatisch eine detaillierte Beschreibung mit:
+- Titel und Spielinformation
+- Audio-Status (Sound gemerged vs. unmergable)
+- Aufnahmedatum und -zeit
+- Kategorie-Information aus der Ordner-Struktur
 
 ### .env Datei
 ```env

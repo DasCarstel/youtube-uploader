@@ -69,9 +69,13 @@ python uploader.py --preview  # Testet jetzt auch die Authentifizierung
 
 1. Ein Browser-Fenster öffnet sich automatisch
 2. Melden Sie sich mit Ihrem Google-Konto an
-3. Bestätigen Sie die Berechtigungen für die App (sowohl Upload als auch Playlist-Management)
+3. Bestätigen Sie die Berechtigungen für die App:
+   - **YouTube Data API v3 Upload**: Zum Hochladen von Videos
+   - **YouTube Data API v3 Playlists**: Zum Verwalten von Playlists
 4. Der Browser zeigt "Die Authentifizierung ist abgeschlossen"
 5. Eine `token.json` Datei wird automatisch erstellt
+
+**Hinweis:** Die Multi-Playlist-Funktionalität erfordert erweiterte Playlist-Berechtigungen.
 
 ## ⚠️ Troubleshooting
 
