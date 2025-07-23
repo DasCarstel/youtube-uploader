@@ -38,6 +38,47 @@ cp .env.example .env
 # ~/n_drive/AUFNAHMEN ist Ihr gemountetes N: Laufwerk
 ```
 
+## 🎮 Workflow und Video-Vorbereitung
+
+### 1. Audio-Merging Vorbereitung (Optional)
+
+Viele Gaming-Videos haben separate Audiospuren (z.B. Game-Audio + Mikrofon). Das enthaltene `merged2audioto2_auto_v2.bat` Script hilft dabei:
+
+```batch
+# Analysiert alle .mp4 Dateien im Ordner
+# Videos mit 2+ Audiospuren: Wird gemerged → "merged_" Präfix
+# Videos mit 1 Audiospur: Wird umbenannt → "unmergable_" Präfix
+```
+
+**Funktionen des Batch-Scripts:**
+- 🔍 **Automatische Analyse** aller .mp4 Dateien
+- 🎵 **Audio-Erkennung** (Zählung der Audiospuren)
+- 🔀 **Intelligentes Merging** mit Loudness-Normalisierung
+- 📝 **Automatische Umbenennung** basierend auf Audio-Struktur
+- ⚡ **Batch-Verarbeitung** für ganze Ordner
+
+**Audio-Processing Details:**
+- Loudness-Normalisierung auf -16 LUFS (YouTube-Standard)
+- Mikrofon-Audio wird auf 25% reduziert (bessere Balance)
+- Stereo-Output mit AAC-Codec für beste Kompatibilität
+- Video-Stream wird unverändert kopiert (schnelle Verarbeitung)
+
+**FFmpeg-Kommando (vereinfacht):**
+```bash
+ffmpeg -i "video.mp4" \
+  -filter_complex "[0:a:0]loudnorm=I=-16,volume=0.25[mic];[0:a:1]loudnorm=I=-16[game];[mic][game]amerge[out]" \
+  -map 0:v -map "[out]" -c:v copy -c:a aac "merged_video.mp4"
+```
+
+**Typische Gaming-Szenarien:**
+- 🎮 **Game + Mikrofon:** Dual-Audio wird optimal gemerged
+- 🔇 **Nur Game-Audio:** Video wird als "unmergable" markiert (kein Processing nötig)
+- ✅ **Bereits gemergt:** Video wird als "unmergable" markiert
+
+### 2. YouTube Upload
+
+Nach der Audio-Vorbereitung kann der Python Uploader alle vorbereiteten Videos verarbeiten:
+
 ## 🎮 Verwendung
 
 ### Virtuelle Umgebung aktivieren
