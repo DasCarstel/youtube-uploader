@@ -552,6 +552,12 @@ class YouTubeUploader:
             category = video['playlist_info']['sub_folders'][-1]  # Letzter/spezifischster Unterordner
             description_parts.append(f"Kategorie: {category}")
         
+        # Video-Status hinzufügen (merged/unmergable)
+        if video['video_type'] == 'merged':
+            description_parts.append("Status: Sound erfolgreich gemerged")
+        else:  # unmergable
+            description_parts.append("Status: Sound war nicht mergbar (Original-Audio)")
+        
         # Aufnahmedatum
         record_date_str = video['record_date'].strftime('%d.%m.%Y - %H:%M Uhr')
         description_parts.append(f"Aufgenommen am: {record_date_str}")
