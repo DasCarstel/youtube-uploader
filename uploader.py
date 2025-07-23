@@ -470,17 +470,26 @@ class YouTubeUploader:
             
             print(f"{Fore.BLUE}📤 Starte Upload: {video['title']} ({file_size_mb:.1f} MB)")
             
+            # Bereinige Titel für Progress Bar (entferne problematische Unicode-Zeichen)
+            clean_title = video['title'].encode('ascii', errors='replace').decode('ascii')
+            
             with tqdm(
                 total=file_size_bytes,
-                desc=f"📤 {video['title'][:25]}",
+                desc=f"📤 {clean_title[:30]}",
                 unit="B",
                 unit_scale=True,
                 unit_divisor=1024,
                 bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
-                colour='green'
+                colour='green',
+                ncols=100,
+                leave=True,
+                dynamic_ncols=False,
+                file=sys.stdout,
+                ascii=False
             ) as pbar:
                 
                 last_uploaded_bytes = 0
+                last_progress_percent = 0
                 
                 while response is None:
                     try:
@@ -489,26 +498,31 @@ class YouTubeUploader:
                         if status:
                             # Berechne hochgeladene Bytes basierend auf Progress
                             uploaded_bytes = int(status.progress() * file_size_bytes)
+                            progress_percent = status.progress() * 100
                             
-                            # Update Progress Bar mit Delta
+                            # Update Progress Bar mit Delta (nur bei nennenswerten Änderungen)
                             bytes_increment = uploaded_bytes - last_uploaded_bytes
+                            progress_increment = progress_percent - last_progress_percent
+                            
                             if bytes_increment > 0:
                                 pbar.update(bytes_increment)
                                 last_uploaded_bytes = uploaded_bytes
-                                
-                                # Zeige Prozent-Info zusätzlich
-                                progress_percent = status.progress() * 100
+                            
+                            # Update Progress Info nur bei größeren Schritten (mindestens 1% Unterschied)
+                            if progress_increment >= 1.0 or response:
                                 pbar.set_postfix({
                                     'Prozent': f'{progress_percent:.1f}%',
                                     'Retry': retry if retry > 0 else None
-                                }, refresh=True)
+                                }, refresh=False)  # refresh=False verhindert zu häufige Updates
+                                last_progress_percent = progress_percent
                                 
                         elif response:
                             # Upload complete - fülle die Bar auf
                             remaining_bytes = file_size_bytes - last_uploaded_bytes
                             if remaining_bytes > 0:
                                 pbar.update(remaining_bytes)
-                                pbar.set_postfix({'Status': 'Abgeschlossen'}, refresh=True)
+                            pbar.set_postfix({'Status': '✅ Abgeschlossen'}, refresh=True)
+                            pbar.refresh()  # Finale Aktualisierung
                             
                     except googleapiclient.errors.HttpError as e:
                         if e.resp.status in [500, 502, 503, 504]:
