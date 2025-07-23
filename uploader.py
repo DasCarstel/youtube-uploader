@@ -180,16 +180,169 @@ class YouTubeUploader:
                         videos.append(video_info)
                         
                 elif item.is_dir():
-                    # Rekursiv in Unterordner
-                    sub_path = current_path + [item.name]
-                    sub_videos = self._scan_folder_recursive(item, main_folder, sub_path)
-                    videos.extend(sub_videos)
-                    
+                    # Prüfe ob der Ordner selbst ein Upload-Ordner ist (mit merged_ oder unmergable_ Präfix)
+                    if self._is_upload_folder(item):
+                        # Durchsuche diesen Ordner und alle Videos darin sollen hochgeladen werden
+                        folder_videos = self._scan_upload_folder(item, main_folder, current_path.copy())
+                        videos.extend(folder_videos)
+                    else:
+                        # Normale rekursive Suche in Unterordner
+                        sub_path = current_path + [item.name]
+                        sub_videos = self._scan_folder_recursive(item, main_folder, sub_path)
+                        videos.extend(sub_videos)
+                        
         except PermissionError:
             if self.debug_mode:
                 print(f"{Fore.YELLOW}⚠️  Keine Berechtigung für: {folder_path}")
                 
         return videos
+    
+    def _is_upload_folder(self, folder_path: Path) -> bool:
+        """Prüft, ob ein Ordner ein Upload-Ordner ist (mit merged_ oder unmergable_ Präfix)"""
+        folder_name = folder_path.name
+        
+        # Prüfe auf Upload-Präfixe in Ordnernamen
+        has_upload_prefix = any(folder_name.startswith(prefix) for prefix in self.VIDEO_PREFIXES)
+        
+        # Überspringe bereits verarbeitete Ordner
+        already_processed = folder_name.startswith(self.UPLOADED_PREFIX)
+        
+        return has_upload_prefix and not already_processed
+    
+    def _scan_upload_folder(self, folder_path: Path, main_folder: str, current_path: List[str]) -> List[Dict]:
+        """Durchsucht einen Upload-Ordner und behandelt alle Videos darin als Upload-bereit"""
+        videos = []
+        folder_name = folder_path.name
+        
+        # Bestimme Video-Typ basierend auf Ordner-Präfix
+        video_type = 'merged' if folder_name.startswith('merged_') else 'unmergable'
+        
+        # Entferne Präfix vom Ordnernamen für die Pfad-Struktur
+        clean_folder_name = folder_name
+        for prefix in self.VIDEO_PREFIXES:
+            if folder_name.startswith(prefix):
+                clean_folder_name = folder_name[len(prefix):]
+                break
+        
+        # Aktualisiere Pfad-Struktur mit bereinigtem Ordnernamen
+        folder_path_structure = current_path + [clean_folder_name]
+        
+        if self.debug_mode:
+            print(f"{Fore.CYAN}🎯 Upload-Ordner gefunden: {folder_name} (Typ: {video_type})")
+        
+        try:
+            # Durchsuche den Upload-Ordner rekursiv nach allen Video-Dateien
+            for item in folder_path.rglob('*'):
+                if item.is_file() and self._is_supported_video_format(item):
+                    # Berechne relative Pfad-Struktur innerhalb des Upload-Ordners
+                    relative_path = item.relative_to(folder_path)
+                    sub_folders = list(relative_path.parent.parts) if relative_path.parent.parts != ('.',) else []
+                    
+                    # Erstelle vollständige Pfad-Struktur
+                    full_path_structure = folder_path_structure + sub_folders
+                    
+                    video_info = self._analyze_upload_folder_video(item, full_path_structure, video_type)
+                    if video_info:
+                        videos.append(video_info)
+                        
+        except PermissionError:
+            if self.debug_mode:
+                print(f"{Fore.YELLOW}⚠️  Keine Berechtigung für Upload-Ordner: {folder_path}")
+        
+        if videos and self.debug_mode:
+            print(f"{Fore.GREEN}   📁 {len(videos)} Video(s) in Upload-Ordner '{folder_name}' gefunden")
+            
+        return videos
+    
+    def _is_supported_video_format(self, file_path: Path) -> bool:
+        """Prüft, ob eine Datei ein unterstütztes Video-Format hat"""
+        return file_path.suffix.lower() in self.SUPPORTED_FORMATS
+    
+    def _analyze_upload_folder_video(self, file_path: Path, folder_structure: List[str], video_type: str) -> Optional[Dict]:
+        """Analysiert ein Video aus einem Upload-Ordner"""
+        try:
+            filename = file_path.name
+            
+            # Verwende Dateinamen als Titel (ohne Dateiendung)
+            title = file_path.stem
+            
+            # Bereinige Titel (ersetze Unterstriche durch Leerzeichen und behebe Encoding-Probleme)
+            title = title.replace('_', ' ').strip()
+            
+            # Verwende die gleichen Encoding-Fixes wie bei normalen Videos
+            # Behebe häufige Encoding-Probleme
+            try:
+                if any(ord(c) > 127 and ord(c) < 256 for c in title):
+                    title_bytes = title.encode('latin1', errors='ignore')
+                    title = title_bytes.decode('utf-8', errors='replace')
+            except:
+                pass
+            
+            # Zusätzliche spezifische Fixes für häufige Probleme
+            encoding_fixes = {
+                'WINDMÜLE': 'WINDMÜHLE',
+                'MÜHLE': 'MÜHLE',
+                'MÜLE': 'MÜHLE',
+                '�': 'Ü',
+                '?': 'Ü',
+                'M�LE': 'MÜHLE',
+                'M�HLE': 'MÜHLE', 
+                'M?LE': 'MÜHLE',
+                'M?HLE': 'MÜHLE',
+                'WINDM�LE': 'WINDMÜHLE',
+                'WINDM?LE': 'WINDMÜHLE',
+                'H�NGT': 'HÄNGT',
+                'H?NGT': 'HÄNGT',
+                '\\udcc4': 'Ä',
+                '\\udcdc': 'Ü',
+                '\\udcf6': 'ö',
+                '\\udce4': 'ä',
+                '\\udcfc': 'ü',
+                '\\udcdf': 'ß',
+                'H\\udcc4NGT': 'HÄNGT',
+                'VIEH H\\udcc4NGT': 'VIEH HÄNGT',
+                'M\\udcdcLE': 'MÜHLE',
+                'WINDM\\udcdcLE': 'WINDMÜHLE'
+            }
+            
+            for broken, fixed in encoding_fixes.items():
+                title = title.replace(broken, fixed)
+            
+            # Bestimme Aufnahmedatum
+            try:
+                record_date = datetime.fromtimestamp(file_path.stat().st_mtime)
+            except:
+                record_date = datetime.now()
+            
+            # Bestimme Playlist-Hierarchie
+            playlist_info = self._determine_playlists(folder_structure)
+            
+            video_info = {
+                'file_path': str(file_path),
+                'filename': filename,
+                'title': title,
+                'video_type': video_type,  # Vom Ordner bestimmt
+                'folder_structure': folder_structure,
+                'playlist_info': playlist_info,
+                'record_date': record_date,
+                'file_size': file_path.stat().st_size,
+                'file_size_mb': round(file_path.stat().st_size / (1024 * 1024), 2),
+                'from_upload_folder': True  # Markierung für Upload-Ordner-Videos
+            }
+            
+            if self.debug_mode:
+                print(f"{Fore.CYAN}🔍 Upload-Ordner-Video analysiert: {filename}")
+                print(f"   📁 Ordner-Struktur: {' > '.join(folder_structure)}")
+                print(f"   🎬 Titel: {title}")
+                print(f"   🎯 Typ: {video_type}")
+                print(f"   📊 Größe: {video_info['file_size_mb']} MB")
+                
+            return video_info
+            
+        except Exception as e:
+            if self.debug_mode:
+                print(f"{Fore.RED}❌ Fehler beim Analysieren von Upload-Ordner-Video {file_path}: {str(e)}")
+            return None
     
     def _is_video_file(self, file_path: Path) -> bool:
         """Prüft, ob eine Datei ein unterstütztes Video ist"""
