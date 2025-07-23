@@ -248,7 +248,9 @@ class YouTubeUploader:
                 'M?LE': 'MÜHLE',
                 'M?HLE': 'MÜHLE',
                 'WINDM�LE': 'WINDMÜHLE',
-                'WINDM?LE': 'WINDMÜHLE'
+                'WINDM?LE': 'WINDMÜHLE',
+                'H�NGT': 'HÄNGT',         # Korrigiere H�NGT zu HÄNGT
+                'H?NGT': 'HÄNGT'          # Fallback für H?NGT zu HÄNGT
             }
             
             for broken, fixed in encoding_fixes.items():
@@ -306,16 +308,23 @@ class YouTubeUploader:
         }
         
         # Erstelle potentielle Playlists (vom spezifischsten zum allgemeinsten)
+        # ALLE Ordner sollen als Playlists verwendet werden (einschließlich Hauptordner)
         if len(folder_structure) > 2:
-            # Verwende spezifischsten Unterordner als primäre Playlist
+            # Beispiel: ['SPIEL AUFNAHMEN', 'Star Wars Jedi Fallen Order', 'BUG']
+            # Primäre Playlist: BUG (spezifischster)
             playlist_info['primary_playlist'] = folder_structure[-1]
-            playlist_info['potential_playlists'] = folder_structure[1:]  # Ohne Hauptordner
-            playlist_info['additional_playlists'] = folder_structure[1:-1]  # Ohne Haupt- und primäre Playlist
+            # Potentielle Playlists: BUG, Star Wars Jedi Fallen Order, SPIEL AUFNAHMEN (rückwärts)
+            playlist_info['potential_playlists'] = list(reversed(folder_structure))
+            # Zusätzliche Playlists: Star Wars Jedi Fallen Order, SPIEL AUFNAHMEN
+            playlist_info['additional_playlists'] = list(reversed(folder_structure[:-1]))
             
         elif len(folder_structure) > 1:
-            # Verwende Spiel-Ordner als primäre Playlist
+            # Beispiel: ['SPIEL AUFNAHMEN', 'Grand Theft Auto V']
+            # Primäre Playlist: Grand Theft Auto V
             playlist_info['primary_playlist'] = folder_structure[1]
-            playlist_info['potential_playlists'] = folder_structure
+            # Potentielle Playlists: Grand Theft Auto V, SPIEL AUFNAHMEN
+            playlist_info['potential_playlists'] = list(reversed(folder_structure))
+            # Zusätzliche Playlists: SPIEL AUFNAHMEN
             playlist_info['additional_playlists'] = [folder_structure[0]]
             
         else:
@@ -608,17 +617,39 @@ class YouTubeUploader:
         return tags
     
     def _add_to_playlist(self, video_id: str, video: Dict):
-        """Fügt Video zu entsprechenden Playlists hinzu"""
+        """Fügt Video zu allen entsprechenden Playlists hinzu (hierarchisch)"""
         try:
-            primary_playlist = video['playlist_info']['primary_playlist']
+            playlist_info = video['playlist_info']
+            potential_playlists = playlist_info['potential_playlists']
             
-            if primary_playlist:
-                playlist_id = self._get_or_create_playlist(primary_playlist)
-                
-                if playlist_id:
-                    self._add_video_to_playlist(video_id, playlist_id)
-                    print(f"{Fore.GREEN}📋 Video zur Playlist '{primary_playlist}' hinzugefügt")
+            if not potential_playlists:
+                print(f"{Fore.YELLOW}⚠️  Keine Playlists für Video '{video['title']}' gefunden")
+                return
+            
+            print(f"{Fore.BLUE}📋 Füge Video zu {len(potential_playlists)} Playlist(s) hinzu...")
+            
+            successful_additions = 0
+            
+            # Füge zu allen potentiellen Playlists hinzu (vom spezifischsten zum allgemeinsten)
+            for playlist_name in potential_playlists:
+                try:
+                    playlist_id = self._get_or_create_playlist(playlist_name)
                     
+                    if playlist_id:
+                        self._add_video_to_playlist(video_id, playlist_id)
+                        print(f"{Fore.GREEN}   ✅ '{playlist_name}' - erfolgreich hinzugefügt")
+                        successful_additions += 1
+                    else:
+                        print(f"{Fore.YELLOW}   ⚠️  '{playlist_name}' - Playlist konnte nicht erstellt werden")
+                        
+                except Exception as playlist_error:
+                    print(f"{Fore.RED}   ❌ '{playlist_name}' - Fehler: {str(playlist_error)}")
+            
+            if successful_additions > 0:
+                print(f"{Fore.GREEN}📋 Video erfolgreich zu {successful_additions}/{len(potential_playlists)} Playlist(s) hinzugefügt")
+            else:
+                print(f"{Fore.RED}❌ Video konnte zu keiner Playlist hinzugefügt werden")
+                
         except Exception as e:
             print(f"{Fore.YELLOW}⚠️  Warnung: Playlist-Zuordnung fehlgeschlagen: {str(e)}")
     
