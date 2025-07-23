@@ -435,10 +435,11 @@ class YouTubeUploader:
             # Erstelle Video-Metadaten
             body = self._create_video_metadata(video)
             
-            # Erstelle Media Upload
+            # Erstelle Media Upload mit kleineren Chunks für bessere Progress-Updates
+            chunk_size = 1024 * 1024 * 5  # 5MB Chunks für regelmäßigere Updates
             media = MediaFileUpload(
                 video['file_path'],
-                chunksize=-1,
+                chunksize=chunk_size,
                 resumable=True,
                 mimetype='video/*'
             )
@@ -450,38 +451,55 @@ class YouTubeUploader:
                 media_body=media
             )
             
-            # Upload mit tqdm Progress Bar
+            # Upload mit verbesserter Progress Bar
             response = None
             retry = 0
             
-            # Erstelle Progress Bar mit Dateigröße
+            # Erstelle Progress Bar basierend auf Dateigröße
+            file_size_bytes = video['file_size']
             file_size_mb = video['file_size_mb']
             
+            print(f"{Fore.BLUE}📤 Starte Upload: {video['title']} ({file_size_mb:.1f} MB)")
+            
             with tqdm(
-                total=100,
-                desc=f"📤 {video['title'][:30]}",
-                unit="%",
-                bar_format="{l_bar}{bar}| {n:.1f}% [{elapsed}<{remaining}, {rate_fmt}]",
+                total=file_size_bytes,
+                desc=f"📤 {video['title'][:25]}",
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
                 colour='green'
             ) as pbar:
                 
-                last_progress = 0
+                last_uploaded_bytes = 0
                 
                 while response is None:
                     try:
                         status, response = request.next_chunk()
                         
                         if status:
-                            progress = int(status.progress() * 100)
-                            # Update Progress Bar
-                            increment = progress - last_progress
-                            if increment > 0:
-                                pbar.update(increment)
-                                last_progress = progress
+                            # Berechne hochgeladene Bytes basierend auf Progress
+                            uploaded_bytes = int(status.progress() * file_size_bytes)
+                            
+                            # Update Progress Bar mit Delta
+                            bytes_increment = uploaded_bytes - last_uploaded_bytes
+                            if bytes_increment > 0:
+                                pbar.update(bytes_increment)
+                                last_uploaded_bytes = uploaded_bytes
+                                
+                                # Zeige Prozent-Info zusätzlich
+                                progress_percent = status.progress() * 100
+                                pbar.set_postfix({
+                                    'Prozent': f'{progress_percent:.1f}%',
+                                    'Retry': retry if retry > 0 else None
+                                }, refresh=True)
                                 
                         elif response:
-                            # Upload complete
-                            pbar.update(100 - last_progress)
+                            # Upload complete - fülle die Bar auf
+                            remaining_bytes = file_size_bytes - last_uploaded_bytes
+                            if remaining_bytes > 0:
+                                pbar.update(remaining_bytes)
+                                pbar.set_postfix({'Status': 'Abgeschlossen'}, refresh=True)
                             
                     except googleapiclient.errors.HttpError as e:
                         if e.resp.status in [500, 502, 503, 504]:
