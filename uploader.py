@@ -255,8 +255,16 @@ class YouTubeUploader:
         return videos
     
     def _is_supported_video_format(self, file_path: Path) -> bool:
-        """Prüft, ob eine Datei ein unterstütztes Video-Format hat"""
-        return file_path.suffix.lower() in self.SUPPORTED_FORMATS
+        """Prüft, ob eine Datei ein unterstütztes Video-Format hat und noch nicht hochgeladen wurde"""
+        if file_path.suffix.lower() not in self.SUPPORTED_FORMATS:
+            return False
+            
+        filename = file_path.name
+        
+        # Überspringe bereits hochgeladene Videos
+        already_uploaded = filename.startswith(self.UPLOADED_PREFIX)
+        
+        return not already_uploaded
     
     def _analyze_upload_folder_video(self, file_path: Path, folder_structure: List[str], video_type: str) -> Optional[Dict]:
         """Analysiert ein Video aus einem Upload-Ordner"""
