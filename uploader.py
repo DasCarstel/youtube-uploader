@@ -68,6 +68,10 @@ class YouTubeUploader:
         # YouTube API Service
         self.youtube_service = None
         
+        # Playlist-Cache zur Quota-Optimierung
+        self.playlist_cache = {}
+        self.playlist_cache_loaded = False
+        
         # Statistiken
         self.stats = {
             'found_videos': 0,
@@ -87,7 +91,35 @@ class YouTubeUploader:
         print(f"{Fore.YELLOW}📂 Aufnahmen-Pfad: {self.recordings_path}")
         print(f"{Fore.YELLOW}👁️  Standard-Sichtbarkeit: {self.default_visibility.upper()}")
         print(f"{Fore.YELLOW}🐛 Debug-Modus: {'AN' if self.debug_mode else 'AUS'}")
+        print(f"{Fore.CYAN}🔧 Quota-Optimierung: Aktiviert (Playlist-Caching)")
         print(f"{Fore.CYAN}{'='*70}\n")
+        
+    def _print_quota_info(self, video_count: int):
+        """Zeigt Quota-Verbrauchsinformationen"""
+        print(f"\n{Fore.BLUE}📊 YOUTUBE DATA API QUOTA-INFORMATION")
+        print(f"{Fore.BLUE}{'='*50}")
+        
+        # Schätze Quota-Verbrauch
+        video_upload_quota = video_count * 1600  # ~1600 Punkte pro Video
+        playlist_list_quota = 1  # Einmalig durch Cache
+        playlist_create_quota = 50 * 3  # Durchschnittlich 3 neue Playlists
+        playlist_add_quota = video_count * 50 * 3  # Pro Video zu 3 Playlists
+        
+        total_estimated_quota = video_upload_quota + playlist_list_quota + playlist_create_quota + playlist_add_quota
+        
+        print(f"{Fore.YELLOW}📤 Video Uploads: {video_count} × 1600 = {video_upload_quota:,} Punkte")
+        print(f"{Fore.YELLOW}📋 Playlist-Liste: 1 × 1 = {playlist_list_quota} Punkte (gecacht)")
+        print(f"{Fore.YELLOW}➕ Playlist-Erstellung: ~{playlist_create_quota} Punkte")
+        print(f"{Fore.YELLOW}📝 Playlist-Zuordnungen: {video_count} × 150 = {playlist_add_quota:,} Punkte")
+        print(f"{Fore.CYAN}📊 Geschätzter Gesamt-Verbrauch: {total_estimated_quota:,} Punkte")
+        
+        if total_estimated_quota > 10000:
+            print(f"{Fore.RED}⚠️  WARNUNG: Geschätzter Verbrauch überschreitet Standard-Quota (10.000 Punkte)")
+            print(f"{Fore.YELLOW}💡 Empfehlung: Quota-Erhöhung beantragen oder weniger Videos uploaden")
+        else:
+            print(f"{Fore.GREEN}✅ Quota-Verbrauch im normalen Bereich")
+            
+        print(f"{Fore.BLUE}{'='*50}\n")
         
     def authenticate_youtube(self) -> bool:
         """Authentifizierung mit der YouTube Data API"""
@@ -131,6 +163,39 @@ class YouTubeUploader:
         except Exception as e:
             print(f"{Fore.RED}❌ Fehler bei der YouTube-Authentifizierung: {str(e)}")
             return False
+    
+    def _load_playlist_cache(self):
+        """Lädt alle existierenden Playlists einmalig in den Cache (Quota-Optimierung)"""
+        if self.playlist_cache_loaded or not self.youtube_service:
+            return
+            
+        try:
+            if self.debug_mode:
+                print(f"{Fore.CYAN}📋 Lade Playlist-Cache (einmalig für Quota-Optimierung)...")
+                
+            request = self.youtube_service.playlists().list(
+                part='snippet',
+                mine=True,
+                maxResults=50
+            )
+            
+            response = request.execute()
+            
+            # Speichere alle Playlists im Cache
+            for playlist in response.get('items', []):
+                playlist_name = playlist['snippet']['title']
+                playlist_id = playlist['id']
+                self.playlist_cache[playlist_name] = playlist_id
+                
+            self.playlist_cache_loaded = True
+            
+            if self.debug_mode:
+                print(f"{Fore.GREEN}✅ {len(self.playlist_cache)} Playlist(s) im Cache geladen")
+                
+        except Exception as e:
+            if self.debug_mode:
+                print(f"{Fore.YELLOW}⚠️  Warnung: Playlist-Cache konnte nicht geladen werden: {str(e)}")
+            self.playlist_cache_loaded = True  # Verhindere weitere Versuche
     
     def find_videos(self) -> List[Dict]:
         """Sucht nach Videos mit den spezifizierten Präfixen"""
@@ -568,6 +633,9 @@ class YouTubeUploader:
                 print(f"   - {Fore.CYAN}ZUSÄTZLICHE Playlists: {playlist_info['additional_playlists']}")
             
             print(f"{Fore.CYAN}{'-'*50}")
+        
+        # Zeige Quota-Information
+        self._print_quota_info(len(videos))
     
     def upload_videos(self, videos: List[Dict]) -> bool:
         """Lädt alle Videos zu YouTube hoch"""
@@ -580,6 +648,9 @@ class YouTubeUploader:
             return False
             
         print(f"\n{Fore.GREEN}🚀 Starte Upload von {len(videos)} Video(s)...")
+        
+        # Lade Playlist-Cache einmalig für bessere Quota-Effizienz
+        self._load_playlist_cache()
         
         # Bestätige Upload
         if not self._confirm_upload(videos):
@@ -734,6 +805,12 @@ class YouTubeUploader:
                                 raise e
                             pbar.write(f"{Fore.YELLOW}⚠️  Retriable error {e.resp.status}, retry {retry}/3")
                             time.sleep(2 ** retry)
+                        elif e.resp.status == 403 and 'quotaExceeded' in str(e):
+                            # Quota exceeded - spezielle Behandlung
+                            pbar.write(f"{Fore.RED}❌ YOUTUBE DATA API QUOTA ÜBERSCHRITTEN!")
+                            pbar.write(f"{Fore.YELLOW}💡 Quota wird täglich um ~9:00 Uhr deutscher Zeit zurückgesetzt")
+                            pbar.write(f"{Fore.YELLOW}🔧 Oder beantragen Sie eine Quota-Erhöhung in der Google Cloud Console")
+                            raise e
                         else:
                             pbar.write(f"{Fore.RED}❌ HTTP Error: {e}")
                             raise e
@@ -877,23 +954,21 @@ class YouTubeUploader:
             print(f"{Fore.YELLOW}⚠️  Warnung: Playlist-Zuordnung für '{clean_title}' fehlgeschlagen: {str(e)}")
     
     def _get_or_create_playlist(self, playlist_name: str) -> Optional[str]:
-        """Holt oder erstellt eine Playlist"""
+        """Holt oder erstellt eine Playlist (mit Cache-Optimierung)"""
         try:
-            # Suche nach existierenden Playlists
-            request = self.youtube_service.playlists().list(
-                part='snippet',
-                mine=True,
-                maxResults=50
-            )
+            # Lade Playlist-Cache einmalig falls noch nicht geschehen
+            self._load_playlist_cache()
             
-            response = request.execute()
-            
-            # Prüfe ob Playlist bereits existiert
-            for playlist in response.get('items', []):
-                if playlist['snippet']['title'] == playlist_name:
-                    return playlist['id']
+            # Prüfe ob Playlist bereits im Cache existiert
+            if playlist_name in self.playlist_cache:
+                if self.debug_mode:
+                    print(f"{Fore.GREEN}📋 Playlist '{playlist_name}' aus Cache gefunden")
+                return self.playlist_cache[playlist_name]
             
             # Erstelle neue Playlist
+            if self.debug_mode:
+                print(f"{Fore.CYAN}📋 Erstelle neue Playlist: {playlist_name}")
+                
             request = self.youtube_service.playlists().insert(
                 part='snippet,status',
                 body={
@@ -909,9 +984,14 @@ class YouTubeUploader:
             )
             
             response = request.execute()
+            playlist_id = response['id']
+            
+            # Füge neue Playlist zum Cache hinzu
+            self.playlist_cache[playlist_name] = playlist_id
+            
             print(f"{Fore.CYAN}📋 Neue Playlist erstellt: {playlist_name}")
             
-            return response['id']
+            return playlist_id
             
         except Exception as e:
             print(f"{Fore.RED}❌ Fehler bei Playlist-Verwaltung: {str(e)}")
