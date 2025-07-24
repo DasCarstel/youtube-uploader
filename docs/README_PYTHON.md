@@ -32,10 +32,10 @@ cp .env.example .env
 4. Erstellen Sie OAuth2-Credentials (Desktop application)
 5. Laden Sie die JSON-Datei herunter und benennen Sie sie zu `credentials.json` um
 
-### 5. SMB-Drive mounten (für WSL)
+### 5. SMB-Drive mounten (nur für WSL-Umgebungen)
 ```bash
-# Bereits durchgeführt in Ihrem Setup:
-# ~/n_drive/AUFNAHMEN ist Ihr gemountetes N: Laufwerk
+# Für WSL-Benutzer mit Windows-Netzlaufwerken:
+# ~/n_drive/AUFNAHMEN sollte bereits als SMB-Mount verfügbar sein
 ```
 
 ## 🎮 Workflow und Video-Vorbereitung
@@ -195,11 +195,11 @@ Jedes Video erhält automatisch eine detaillierte Beschreibung mit:
 - Aufnahmedatum und -zeit
 - Kategorie-Information aus der Ordner-Struktur
 
-### .env Datei
+### .env Konfiguration
 ```env
-RECORDINGS_PATH=/home/carst/n_drive/AUFNAHMEN
-DEFAULT_VISIBILITY=unlisted
-DEBUG_MODE=false
+RECORDINGS_PATH=/pfad/zu/aufnahmen  # Anpassen an Ihr System
+DEFAULT_VISIBILITY=unlisted        # private, unlisted, public  
+DEBUG_MODE=false                    # true für detaillierte Ausgaben
 ```
 
 ### Sichtbarkeits-Optionen
@@ -252,23 +252,24 @@ NACH Upload:
    - Authentifizieren Sie sich neu: `python uploader.py --preview` (testet jetzt auch die Authentifizierung)
    - Akzeptieren Sie alle Berechtigungen im Browser
 
-## 📊 Features
+## 📊 Implementation Status
 
-### ✅ Implementiert
-- [x] Automatische Video-Erkennung
-- [x] YouTube Data API v3 Integration
-- [x] Intelligente Playlist-Verwaltung
-- [x] Datei-Umbenennung nach Upload
-- [x] Progress-Tracking
-- [x] Debug-Modus
-- [x] Preview-Modus
-- [x] Fehler-Behandlung
-- [x] Metadaten-Generierung
+### ✅ Vollständig implementiert
+- [x] Automatische Video-Erkennung (Datei + Ordner-basiert)
+- [x] YouTube Data API v3 Integration mit OAuth2
+- [x] Multi-Playlist-Verwaltung (hierarchisch)
+- [x] Datei-Umbenennung nach Upload (`uploaded_` Präfix)
+- [x] Progress-Tracking mit 5MB Chunks
+- [x] Debug- und Preview-Modi
+- [x] Umfassende Fehler-Behandlung
+- [x] Automatische Metadaten-Generierung
+- [x] Encoding-Fixes für deutsche Umlaute
+- [x] Folder-basierte Upload-Funktionalität
 
-### 🚧 Geplant
-- [ ] Thumbnail-Upload
-- [ ] Batch-Upload-Konfiguration
-- [ ] Resume-Funktionalität
+### 🚧 Mögliche Erweiterungen
+- [ ] Thumbnail-Upload Integration
+- [ ] Batch-Upload-Konfiguration per JSON
+- [ ] Resume-Funktionalität bei unterbrochenen Uploads
 - [ ] Multi-Account-Support
 
 ## 🔐 Sicherheit

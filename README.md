@@ -45,90 +45,59 @@ cp .env.example .env
 ```
 
 ### 3. YouTube API einrichten
-1. [Google Cloud Console](https://console.cloud.google.com/) öffnen
-2. Neues Projekt erstellen
-3. **YouTube Data API v3** aktivieren
-4. OAuth2-Credentials erstellen (Desktop application)
-5. JSON-Datei als `credentials.json` speichern
+1. [Google Cloud Console](https://console.cloud.google.com/) → Neues Projekt
+2. **YouTube Data API v3** aktivieren  
+3. OAuth2-Credentials erstellen → als `credentials.json` speichern
 
 > 📖 **Detaillierte Anleitung:** [docs/GOOGLE_API_SETUP.md](docs/GOOGLE_API_SETUP.md)
 
-### 4. Ersten Upload
+### 4. Los geht's
 ```bash
-source venv/bin/activate
-
-# Vorschau (testet auch Authentifizierung)
-python uploader.py --preview
-
-# Upload starten
-python uploader.py
+python uploader.py --preview  # Testen
+python uploader.py           # Upload starten
 ```
 
-## 🎬 Audio-Vorbereitung (Optional)
+## 🎬 Audio-Merging (Optional)
 
-Für Gaming-Videos mit separaten Audio-Spuren (Game + Mikrofon):
+Gaming-Videos mit separaten Audio-Spuren können vor dem Upload optimiert werden:
 
 ```batch
-# In Windows, im Video-Ordner ausführen:
-merged2audioto2_auto_v2.bat
+merged2audioto2_auto_v2.bat  # Windows Script im Video-Ordner
 ```
 
-Das Script analysiert automatisch alle .mp4 Dateien und merged Videos mit 2+ Audiospuren optimal für YouTube.
+→ Merged automatisch Game-Audio + Mikrofon und normalisiert die Lautstärke für YouTube
 
 ## 📁 Video-Organisation
 
-### Unterstützte Struktur:
 ```
-AUFNAHMEN/
-├── SPIEL AUFNAHMEN/
-│   ├── Grand Theft Auto V/
-│   │   ├── BUG/
-│   │   │   ├── merged_LUSTIGER_BUG.mp4
-│   │   │   └── unmergable_CRASH_VIDEO.mp4
-│   │   └── merged_LUSTIGE_MOMENTE/     # ← Ganzer Ordner
-│   │       ├── video1.mp4
-│   │       └── video2.mp4
-├── WITZIGE MOMENTE/
-└── GESCHNITTE MOMENTE/
+AUFNAHMEN/SPIEL AUFNAHMEN/Grand Theft Auto V/
+├── BUG/merged_LUSTIGER_BUG.mp4           # Einzelne Datei
+└── merged_LUSTIGE_MOMENTE/               # Ganzer Ordner
+    ├── video1.mp4
+    └── video2.mp4
 ```
 
-### Video-Erkennung:
 - **Einzelne Dateien:** `merged_*` oder `unmergable_*` Präfixe
-- **Ganze Ordner:** Ordner mit `merged_*` oder `unmergable_*` Namen
+- **Ganze Ordner:** Ordner mit Upload-Präfixen
 - **Formate:** .mp4, .avi, .mov, .mkv, .webm, .flv
 
 ## 📋 Playlist-Management
 
-Videos werden automatisch zu **hierarchischen Playlists** hinzugefügt:
+Hierarchische Playlist-Zuordnung basierend auf Ordner-Struktur:
 
 ```
 SPIEL AUFNAHMEN/Star Wars Jedi/BUG/video.mp4
-   ↓ Wird hinzugefügt zu:
-1. "BUG" (primäre Playlist)
-2. "Star Wars Jedi" 
-3. "SPIEL AUFNAHMEN"
+   ↓ Wird automatisch hinzugefügt zu:
+1. "BUG" 2. "Star Wars Jedi" 3. "SPIEL AUFNAHMEN"
 ```
 
-- ✅ Playlists werden automatisch erstellt
-- 🎯 Intelligente Hierarchie-Erkennung
-
-## 🔧 Wichtige Befehle
+## 🔧 Befehle
 
 ```bash
-# System testen (empfohlen zuerst)
-python uploader.py --preview
-
-# Debug-Informationen
-python uploader.py --debug --preview
-
-# Upload starten
-python uploader.py
-
-# Hilfe anzeigen
-python uploader.py --help
-
-# Alternativer Pfad
-python uploader.py --path /anderer/pfad
+python uploader.py --preview    # System testen
+python uploader.py --debug      # Debug-Infos  
+python uploader.py             # Upload starten
+python uploader.py --help      # Hilfe anzeigen
 ```
 
 ## 🐛 Häufige Probleme

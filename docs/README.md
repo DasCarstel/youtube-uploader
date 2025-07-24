@@ -4,29 +4,30 @@ Hier finden Sie die vollständige Dokumentation für den YouTube Gaming Video Up
 
 ## 📖 Dokumentationsübersicht
 
-### 🚀 Erste Schritte
-- **[SCHNELLSTART.md](SCHNELLSTART.md)** - 5-Minuten Setup-Guide für schnellen Einstieg
-- **[README_PYTHON.md](README_PYTHON.md)** - Detaillierte Installation und Konfiguration
+### 🚀 **SCHNELLSTART.md** - Schneller Einstieg
+**Zielgruppe:** Neue Benutzer, die sofort loslegen möchten  
+**Inhalt:** 5-Minuten-Setup, grundlegende Konfiguration, erste Uploads
 
-### 🔧 Einrichtung
-- **[GOOGLE_API_SETUP.md](GOOGLE_API_SETUP.md)** - YouTube Data API v3 Credentials einrichten
+### 📖 **README_PYTHON.md** - Technische Details  
+**Zielgruppe:** Entwickler und Power-User  
+**Inhalt:** Detaillierte Installation, alle Features erklärt, Troubleshooting
 
-### 📋 Technische Details  
-- **[uploader.instructions.md](uploader.instructions.md)** - Vollständige Anforderungsspezifikation und Features
+### 🔧 **GOOGLE_API_SETUP.md** - API-Einrichtung
+**Zielgruppe:** Alle Benutzer (wird beim Setup benötigt)  
+**Inhalt:** Schritt-für-Schritt YouTube Data API v3 Credentials
 
-## 🎯 Dokumentation nach Anwendungsfall
+### 📋 **uploader.instructions.md** - Vollständige Spezifikation
+**Zielgruppe:** Entwickler, Contributors  
+**Inhalt:** Alle Anforderungen, Features, technische Implementierungsdetails
 
-### Ich bin neu und möchte schnell starten
-→ **[SCHNELLSTART.md](SCHNELLSTART.md)** - Der 5-Minuten-Guide
+## 🎯 Welche Dokumentation ist für Sie richtig?
 
-### Ich brauche detaillierte Installation
-→ **[README_PYTHON.md](README_PYTHON.md)** - Schritt-für-Schritt Anleitung
-
-### Ich habe Probleme mit der YouTube API
-→ **[GOOGLE_API_SETUP.md](GOOGLE_API_SETUP.md)** - API-Setup mit Screenshots
-
-### Ich möchte alle Features verstehen
-→ **[uploader.instructions.md](uploader.instructions.md)** - Vollständige Spezifikation
+| Situation | Empfohlene Dokumentation |
+|-----------|-------------------------|
+| 🆕 **Ich bin neu** | [SCHNELLSTART.md](SCHNELLSTART.md) |
+| 🔧 **Ich brauche alle Details** | [README_PYTHON.md](README_PYTHON.md) |  
+| ❌ **YouTube API Probleme** | [GOOGLE_API_SETUP.md](GOOGLE_API_SETUP.md) |
+| 👨‍💻 **Ich möchte beitragen** | [uploader.instructions.md](uploader.instructions.md) |
 
 ## 🔙 Zurück zur Hauptseite
 

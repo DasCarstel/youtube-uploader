@@ -11,8 +11,6 @@
 
 ## ⚡ 5-Minuten Setup
 
-## ⚡ 5-Minuten Setup
-
 ### 1. Repository klonen und Dependencies installieren
 ```bash
 git clone https://github.com/yourusername/youtube-uploader.git
@@ -69,81 +67,46 @@ Falls Ihre Videos mehrere Audiospuren haben (Game-Audio + Mikrofon), verwenden S
 ```batch
 # In Windows (im Video-Ordner):
 merged2audioto2_auto_v2.bat
-
-# Das Script:
-# - Analysiert alle .mp4 Dateien automatisch
-# - Videos mit 2+ Audiospuren: Audio wird gemerged → "merged_" Präfix
-# - Videos mit nur 1 Audiospur: Wird umbenannt → "unmergable_" Präfix
-# - Loudness-Normalisierung (-16 LUFS) für optimale Audio-Qualität
 ```
 
-## 🎬 Audio-Vorbereitung (Optional)
-
-Falls Ihre Gaming-Videos mehrere Audiospuren haben (Game-Audio + Mikrofon):
-
-```batch
-# In Windows, im Video-Ordner ausführen:
-merged2audioto2_auto_v2.bat
-```
-
-**Was das Script macht:**
-- 🔍 Analysiert alle .mp4 Dateien automatisch
-- 🎵 Videos mit 2+ Audiospuren: Audio wird gemerged → `merged_` Präfix
-- � Videos mit 1 Audiospur: Wird umbenannt → `unmergable_` Präfix
-- 🎚️ Loudness-Normalisierung (-16 LUFS) für optimale YouTube-Qualität
-- ⚖️ Bessere Audio-Balance (Mikrofon auf 25%, Game-Audio normal)
+**Das Script macht:**
+- 🔍 Analysiert alle .mp4 Dateien automatisch  
+- 🎵 Videos mit 2+ Audiospuren: Merging → `merged_` Präfix
+- 📝 Videos mit 1 Audiospur: Umbenennung → `unmergable_` Präfix
+- 🎚️ Loudness-Normalisierung (-16 LUFS) für YouTube-Qualität
 
 ## 📁 Video-Organisation
 
-### Unterstützte Ordner-Struktur:
+### Beispiel-Struktur:
 ```
-AUFNAHMEN/
-├── SPIEL AUFNAHMEN/
-│   ├── Grand Theft Auto V/
-│   │   ├── BUG/
-│   │   │   ├── merged_LUSTIGER_BUG.mp4
-│   │   │   └── unmergable_CRASH_VIDEO.mp4
-│   │   └── merged_LUSTIGE_MOMENTE/     # ← Ganzer Ordner-Upload
-│   │       ├── video1.mp4
-│   │       └── video2.mp4
-├── WITZIGE MOMENTE/
-└── GESCHNITTE MOMENTE/
+AUFNAHMEN/SPIEL AUFNAHMEN/Grand Theft Auto V/
+├── BUG/merged_LUSTIGER_BUG.mp4
+├── BUG/unmergable_CRASH_VIDEO.mp4  
+└── merged_LUSTIGE_MOMENTE/          # ← Ganzer Ordner-Upload
+    ├── video1.mp4 → video2.mp4
 ```
 
-### Video-Erkennung:
+### Erkennungsregeln:
 - **Einzelne Dateien:** `merged_*` oder `unmergable_*` Präfixe
-- **Ganze Ordner:** Ordner mit `merged_*` oder `unmergable_*` Namen
-- **Formate:** .mp4, .avi, .mov, .mkv, .webm, .flv
+- **Ganze Ordner:** Ordner mit Upload-Präfixen werden komplett verarbeitet
 - **Bereits verarbeitet:** `uploaded_*` werden übersprungen
 
 ## ✨ Haupt-Features
 
-- 🎯 **Automatische Video-Erkennung** mit Präfix-System
-- 📁 **Folder-basierte Uploads** - Ganze Ordner werden verarbeitet
-- 📋 **Multi-Playlist-Support** - Videos zu allen hierarchischen Playlists
-- 🎵 **Audio-Merging** für Gaming-Videos mit FFmpeg
-- 🔧 **Encoding-Fixes** für deutsche Umlaute (WINDM�LE → WINDMÜHLE)
-- 📊 **Progress-Tracking** mit 5MB Chunks und Ein-Zeilen-Updates
-- 🏷️ **Automatische Metadaten** (Titel, Beschreibung, Tags, Kategorie)
-- 🔒 **OAuth2-Sicherheit** mit lokaler Token-Speicherung
+- 🎯 Automatische Video-Erkennung mit Präfix-System
+- 📁 Folder-basierte Uploads - Ganze Ordner werden verarbeitet  
+- 📋 Multi-Playlist-Support - Hierarchische Playlist-Zuordnung
+- 🎵 Audio-Merging für Gaming-Videos mit FFmpeg
+- 🔧 Encoding-Fixes für deutsche Umlaute
+- 📊 Progress-Tracking mit sauberen Ein-Zeilen-Updates
 
 ## 🔧 Wichtige Befehle
 
 ```bash
-# System testen (empfohlen zuerst)
-python uploader.py --preview
-
-# Debug-Informationen anzeigen
-python uploader.py --debug --preview
-
-# Upload starten
-python uploader.py
-
-# Hilfe anzeigen
-python uploader.py --help
-
-# Alternativer Aufnahmen-Pfad
-python uploader.py --path /anderer/pfad
+python uploader.py --preview          # System testen
+python uploader.py --debug --preview  # Debug-Informationen  
+python uploader.py                    # Upload starten
+python uploader.py --path /pfad       # Alternativer Aufnahmen-Pfad
 ```
 
 ## 📊 Konfiguration (.env)
@@ -161,20 +124,14 @@ DEBUG_MODE=false
 
 ## 🎬 Playlist-Management
 
-Videos werden automatisch zu **hierarchischen Playlists** hinzugefügt:
-
 ```
-Beispiel: SPIEL AUFNAHMEN/Star Wars Jedi/BUG/video.mp4
-
-Automatisch hinzugefügt zu:
-1. "BUG" (primäre Playlist)
-2. "Star Wars Jedi" 
-3. "SPIEL AUFNAHMEN"
+SPIEL AUFNAHMEN/Star Wars Jedi/BUG/video.mp4
+   ↓ Automatisch hinzugefügt zu:
+1. "BUG" 2. "Star Wars Jedi" 3. "SPIEL AUFNAHMEN"
 ```
 
-- ✅ Playlists werden automatisch erstellt wenn nicht vorhanden
-- 🎯 Intelligente Hierarchie-Erkennung
-- 🔍 Suche nach existierenden Playlists
+- ✅ Playlists werden automatisch erstellt
+- 🎯 Hierarchie basierend auf Ordner-Struktur
 
 ## ⚠️ Wichtige Hinweise
 
