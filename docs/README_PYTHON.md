@@ -295,8 +295,11 @@ NACH Upload:
    - Aktivieren Sie Debug-Modus: `python uploader.py --debug --preview`
 
 5. **YouTube API Quota überschritten**
-   - YouTube Data API hat tägliche Limits
-   - Warten Sie bis zum nächsten Tag oder erhöhen Sie das Quota
+   - YouTube Data API hat tägliche Limits von **~10.000 Einheiten pro Tag**
+   - **Praktisch:** Ca. **39-40 Videos** pro Tag uploadbar (getestet: 39 komplett + 1 teilweise)
+   - **Upload-Kosten:** ~250 Einheiten pro Video (Upload + Playlist + Metadaten)
+   - **Lösung:** Warten Sie bis zum nächsten Tag (Reset um Mitternacht PST)
+   - **Alternative:** Google Cloud Console - Quota-Erhöhung beantragen (kostenpflichtig)
 
 6. **"Insufficient authentication scopes" oder Playlist-Fehler**
    - Die API-Berechtigung reicht nicht für Playlist-Management

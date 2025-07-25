@@ -121,8 +121,9 @@ sudo mount /home/username/n_drive
 ```
 
 **YouTube API Quota überschritten**
-- Standard: ~6 Videos/Tag
-- Lösung: Quota in Google Cloud Console erhöhen
+- **Limit:** ~39-40 Videos pro Tag (getestet: 39 komplett + 1 teilweise)
+- **Reset:** Täglich um Mitternacht PST
+- **Lösung:** Warten oder Quota in Google Cloud Console erhöhen
 
 ## 📚 Dokumentation
 

@@ -179,7 +179,7 @@ SPIEL AUFNAHMEN/Star Wars Jedi/BUG/video.mp4
 
 ## ⚠️ Wichtige Hinweise
 
-1. **API Limits:** YouTube Data API hat tägliche Quotas (~6 Videos/Tag bei Standard-Quota)
+1. **API Limits:** YouTube Data API hat tägliche Quotas (**39-40 Videos/Tag** getestet: 39 komplett + 1 teilweise)
 2. **Sicherheit:** `credentials.json` wird aus Sicherheitsgründen nicht in Git gespeichert
 3. **SMB-Verbindungen:** Nach einem Neustart muss das Netzlaufwerk möglicherweise neu gemountet werden
 
@@ -232,8 +232,9 @@ python uploader.py --debug --preview
 
 ### YouTube API Quota überschritten
 ```bash
-# Standardlimit: ~6 Videos/Tag
-# Lösung: Warten oder Quota in Google Cloud Console erhöhen
+# AKTUALISIERT: ~39-40 Videos/Tag (getestet: 39 komplett + 1 teilweise)
+# Reset: Täglich um Mitternacht PST
+# Lösung: Warten oder Quota in Google Cloud Console erhöhen (kostenpflichtig)
 ```
 
 ## 📚 Weitere Dokumentation
