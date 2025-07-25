@@ -20,13 +20,18 @@ Hier finden Sie die vollständige Dokumentation für den YouTube Gaming Video Up
 **Zielgruppe:** Entwickler, Contributors  
 **Inhalt:** Alle Anforderungen, Features, technische Implementierungsdetails
 
-## 🎯 Welche Dokumentation ist für Sie richtig?
+### � **SMB_SETUP.md** - Netzlaufwerk-Integration
+**Zielgruppe:** NAS/Server-Nutzer  
+**Inhalt:** SMB/CIFS Mount-Konfiguration für Netzlaufwerke
+
+## �🎯 Welche Dokumentation ist für Sie richtig?
 
 | Situation | Empfohlene Dokumentation |
 |-----------|-------------------------|
 | 🆕 **Ich bin neu** | [SCHNELLSTART.md](SCHNELLSTART.md) |
 | 🔧 **Ich brauche alle Details** | [README_PYTHON.md](README_PYTHON.md) |  
 | ❌ **YouTube API Probleme** | [GOOGLE_API_SETUP.md](GOOGLE_API_SETUP.md) |
+| 🌐 **Videos auf NAS/Server** | [SMB_SETUP.md](SMB_SETUP.md) |
 | 👨‍💻 **Ich möchte beitragen** | [uploader.instructions.md](uploader.instructions.md) |
 
 ## 🔙 Zurück zur Hauptseite

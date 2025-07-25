@@ -111,6 +111,15 @@ python uploader.py --help      # Hilfe anzeigen
 python uploader.py --debug --preview  # Debug-Infos anzeigen
 ```
 
+**SMB/NAS-Laufwerk nicht erreichbar**
+```bash
+# Mount-Status prüfen
+df -h | grep n_drive
+
+# Bei Bedarf remounten  
+sudo mount /home/username/n_drive
+```
+
 **YouTube API Quota überschritten**
 - Standard: ~6 Videos/Tag
 - Lösung: Quota in Google Cloud Console erhöhen

@@ -37,6 +37,50 @@ cp .env.example .env
 # DEBUG_MODE=false
 ```
 
+### 2.1 SMB/NAS-Laufwerk mounten (Optional)
+Falls Ihre Videos auf einem Netzlaufwerk (SMB/CIFS) gespeichert sind:
+
+```bash
+# 1. Mount-Punkt erstellen
+mkdir -p ~/n_drive
+
+# 2. SMB-Credentials-Datei erstellen (einmalig)
+sudo nano /etc/smb-credentials
+```
+
+**Inhalt der `/etc/smb-credentials` Datei:**
+```
+username=ihr_benutzername
+password=ihr_passwort
+domain=ihre_domain  # Optional
+```
+
+```bash
+# 3. Berechtigung setzen
+sudo chmod 600 /etc/smb-credentials
+
+# 4. fstab-Eintrag hinzufügen (für automatisches Mount)
+sudo nano /etc/fstab
+```
+
+**Fügen Sie diese Zeile zu `/etc/fstab` hinzu:**
+```
+//IP_ADRESSE/SHARE_NAME /home/username/n_drive cifs credentials=/etc/smb-credentials,uid=1001,gid=1001,vers=3.0,file_mode=0755,dir_mode=0755,noperm 0 0
+```
+
+```bash
+# 5. Testen und mounten
+sudo mount /home/username/n_drive
+
+# 6. Prüfen ob erfolgreich
+df -h | grep n_drive
+```
+
+**Dann in .env setzen:**
+```bash
+RECORDINGS_PATH=/home/username/n_drive/AUFNAHMEN
+```
+
 ### 3. YouTube API Credentials einrichten
 ```bash
 # Detaillierte Anleitung lesen:
@@ -137,6 +181,36 @@ SPIEL AUFNAHMEN/Star Wars Jedi/BUG/video.mp4
 
 1. **API Limits:** YouTube Data API hat tägliche Quotas (~6 Videos/Tag bei Standard-Quota)
 2. **Sicherheit:** `credentials.json` wird aus Sicherheitsgründen nicht in Git gespeichert
+3. **SMB-Verbindungen:** Nach einem Neustart muss das Netzlaufwerk möglicherweise neu gemountet werden
+
+## 🛠️ Troubleshooting
+
+### SMB-Mount Probleme
+```bash
+# SMB-Laufwerk nach Neustart remounten
+sudo mount /home/username/n_drive
+
+# Prüfen ob Mount erfolgreich
+df -h | grep n_drive
+
+# SMB-Verbindung testen
+ls -la /home/username/n_drive/
+
+# Mount-Status prüfen
+mount | grep cifs
+```
+
+### Häufige Fehler
+**"No such file or directory"**
+- SMB-Laufwerk nicht gemountet → `sudo mount /home/username/n_drive`
+
+**"Permission denied"**
+- SMB-Credentials prüfen → `/etc/smb-credentials`
+- UID/GID in fstab prüfen → `id` Befehl ausführen
+
+**"Operation now in progress"**
+- Netzwerkverbindung prüfen
+- IP-Adresse des NAS/Servers prüfen
 3. **Erste Authentifizierung:** Browser öffnet sich automatisch für OAuth2-Flow
 4. **Datei-Sicherheit:** Videos werden nur umbenannt, nicht gelöscht (`uploaded_` Präfix)
 5. **Internet:** Stabile Verbindung für große Video-Uploads erforderlich

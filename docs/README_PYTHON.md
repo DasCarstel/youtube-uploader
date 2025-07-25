@@ -75,7 +75,42 @@ ffmpeg -i "video.mp4" \
 - 🔇 **Nur Game-Audio:** Video wird als "unmergable" markiert (kein Processing nötig)
 - ✅ **Bereits gemergt:** Video wird als "unmergable" markiert
 
-### 2. YouTube Upload
+### 2. Netzlaufwerk-Integration (SMB/CIFS)
+
+Für Videos auf Netzlaufwerken (NAS, Server) unterstützt das System SMB/CIFS-Mounts:
+
+```bash
+# SMB-Mount einrichten (einmalig)
+sudo mkdir -p /home/username/n_drive
+
+# Credentials-Datei erstellen
+sudo tee /etc/smb-credentials << EOF
+username=your_username
+password=your_password
+domain=your_domain
+EOF
+
+sudo chmod 600 /etc/smb-credentials
+
+# Automatisches Mount in /etc/fstab
+echo "//SERVER_IP/SHARE_NAME /home/username/n_drive cifs credentials=/etc/smb-credentials,uid=$(id -u),gid=$(id -g),vers=3.0,file_mode=0755,dir_mode=0755,noperm 0 0" | sudo tee -a /etc/fstab
+
+# Testen
+sudo mount /home/username/n_drive
+```
+
+**Konfiguration in .env:**
+```bash
+RECORDINGS_PATH=/home/username/n_drive/AUFNAHMEN
+```
+
+**Mount nach Neustart:**
+```bash
+# Automatisch durch fstab oder manuell:
+sudo mount /home/username/n_drive
+```
+
+### 3. YouTube Upload
 
 Nach der Audio-Vorbereitung kann der Python Uploader alle vorbereiteten Videos verarbeiten:
 
@@ -233,20 +268,37 @@ NACH Upload:
 1. **"Aufnahmen-Pfad nicht gefunden"**
    - Überprüfen Sie, ob der SMB-Drive gemountet ist
    - Testen Sie: `ls ~/n_drive/AUFNAHMEN`
+   - Mount-Status prüfen: `df -h | grep n_drive`
+   - Bei Bedarf remounten: `sudo mount ~/n_drive`
 
-2. **"credentials.json nicht gefunden"**
+2. **SMB-Mount Probleme**
+   ```bash
+   # SMB-Verbindung testen
+   ping SERVER_IP
+   
+   # Credentials prüfen
+   sudo cat /etc/smb-credentials
+   
+   # Mount-Logs anzeigen
+   dmesg | tail -10
+   
+   # Manuelles Mount mit Debug
+   sudo mount -t cifs //SERVER_IP/SHARE /mount/point -o username=user,vers=3.0 -v
+   ```
+
+3. **"credentials.json nicht gefunden"**
    - Laden Sie die OAuth2-Credentials von der Google Cloud Console herunter
    - Benennen Sie die Datei zu `credentials.json` um
 
-3. **"Keine Videos gefunden"**
+4. **"Keine Videos gefunden"**
    - Überprüfen Sie die Video-Präfixe (`merged_` oder `unmergable_`)
    - Aktivieren Sie Debug-Modus: `python uploader.py --debug --preview`
 
-4. **YouTube API Quota überschritten**
+5. **YouTube API Quota überschritten**
    - YouTube Data API hat tägliche Limits
    - Warten Sie bis zum nächsten Tag oder erhöhen Sie das Quota
 
-5. **"Insufficient authentication scopes" oder Playlist-Fehler**
+6. **"Insufficient authentication scopes" oder Playlist-Fehler**
    - Die API-Berechtigung reicht nicht für Playlist-Management
    - Löschen Sie `token.json`: `rm -f token.json`
    - Authentifizieren Sie sich neu: `python uploader.py --preview` (testet jetzt auch die Authentifizierung)
