@@ -978,7 +978,7 @@ class YouTubeUploader:
                         'defaultLanguage': 'de'
                     },
                     'status': {
-                        'privacyStatus': 'public'
+                        'privacyStatus': 'unlisted'
                     }
                 }
             )
