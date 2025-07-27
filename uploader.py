@@ -745,19 +745,37 @@ class YouTubeUploader:
             # Entferne Replacement-Character
             progress_title = progress_title.replace('?', '').strip()
             
+            # Dynamische Terminal-Breite für bessere Darstellung
+            import shutil
+            terminal_width = shutil.get_terminal_size().columns
+            
+            # Passe Progress Bar an Terminal-Breite an
+            if terminal_width < 80:
+                # Schmales Terminal: Kurze Beschreibung und kompakte Darstellung
+                desc_text = f"📤 {progress_title[:15]}"
+                bar_format = "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}"
+                use_ncols = terminal_width - 5  # Etwas Puffer
+            else:
+                # Breites Terminal: Vollständige Darstellung
+                desc_text = f"📤 {progress_title[:30]}"
+                bar_format = "{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+                use_ncols = min(terminal_width - 10, 120)  # Maximal 120 Zeichen
+            
             with tqdm(
                 total=file_size_bytes,
-                desc=f"📤 {progress_title[:30]}",
+                desc=desc_text,
                 unit="B",
                 unit_scale=True,
                 unit_divisor=1024,
-                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
+                bar_format=bar_format,
                 colour='green',
-                ncols=100,
+                ncols=use_ncols,
                 leave=True,
-                dynamic_ncols=False,
+                dynamic_ncols=True,  # Wichtig: True für responsive Verhalten
                 file=sys.stdout,
-                ascii=False
+                ascii=False,
+                miniters=1,  # Update bei jedem Chunk
+                mininterval=0.5  # Aber nicht öfter als alle 0.5 Sekunden
             ) as pbar:
                 
                 last_uploaded_bytes = 0
@@ -780,12 +798,19 @@ class YouTubeUploader:
                                 pbar.update(bytes_increment)
                                 last_uploaded_bytes = uploaded_bytes
                             
-                            # Update Progress Info nur bei größeren Schritten (mindestens 1% Unterschied)
-                            if progress_increment >= 1.0 or response:
-                                pbar.set_postfix({
-                                    'Prozent': f'{progress_percent:.1f}%',
-                                    'Retry': retry if retry > 0 else None
-                                }, refresh=False)  # refresh=False verhindert zu häufige Updates
+                            # Update Progress Info nur bei größeren Schritten (mindestens 2% Unterschied für weniger Updates)
+                            if progress_increment >= 2.0 or response:
+                                if terminal_width < 80:
+                                    # Schmales Terminal: Nur Prozent
+                                    pbar.set_postfix({
+                                        'Retry': retry if retry > 0 else None
+                                    }, refresh=False)
+                                else:
+                                    # Breites Terminal: Vollständige Info
+                                    pbar.set_postfix({
+                                        'Prozent': f'{progress_percent:.1f}%',
+                                        'Retry': retry if retry > 0 else None
+                                    }, refresh=False)
                                 last_progress_percent = progress_percent
                                 
                         elif response:
