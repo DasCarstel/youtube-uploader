@@ -230,6 +230,79 @@ class YouTubeUploader:
         
         return videos
     
+    def _fix_encoding_issues(self, text: str) -> str:
+        """
+        Generelle Lösung für Encoding-Probleme in Video-Titeln.
+        Behebt systematisch häufige Encoding-Fehler bei deutschen Umlauten.
+        """
+        if not text:
+            return text
+            
+        # Schritt 1: Versuche korrekte UTF-8 Dekodierung
+        try:
+            if any(ord(c) > 127 and ord(c) < 256 for c in text):
+                text_bytes = text.encode('latin1', errors='ignore')
+                text = text_bytes.decode('utf-8', errors='replace')
+        except:
+            pass
+        
+        # Schritt 2: Unicode-Normalisierung
+        import unicodedata
+        try:
+            text = unicodedata.normalize('NFC', text)
+        except:
+            pass
+        
+        # Schritt 3: Systematische Umlaut-Korrektur
+        # Replacement Character und Fragezeichen an typischen Umlaut-Positionen
+        import re
+        
+        # Korrigiere defekte Umlaute in häufigen Wörtern
+        umlaut_corrections = [
+            # Ä/ä Korrekturen
+            (r'H[�?]NGT', 'HÄNGT'),
+            (r'[�?][Aa]', 'Ä'),
+            (r'([A-Z])([�?])([A-Z])', r'\1Ä\3'),
+            
+            # Ö/ö Korrekturen  
+            (r'H[�?]RT', 'HÖRT'),
+            (r'[�?][Oo]', 'Ö'),
+            (r'([A-Z])([�?])([A-Z])', r'\1Ö\3'),
+            
+            # Ü/ü Korrekturen
+            (r'M[�?]HLE', 'MÜHLE'),
+            (r'WINDM[�?]HLE', 'WINDMÜHLE'),
+            (r'[�?][Uu]', 'Ü'),
+            (r'([A-Z])([�?])([A-Z])', r'\1Ü\3'),
+            
+            # Fehlende Umlaute (komplett weggelassen)
+            (r'\bHRT\b', 'HÖRT'),
+            (r'\bHNGT\b', 'HÄNGT'),
+            (r'MLE\b', 'MÜHLE'),
+            (r'WINDMLE\b', 'WINDMÜHLE'),
+        ]
+        
+        for pattern, replacement in umlaut_corrections:
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+        
+        # Schritt 4: Unicode-Escape-Sequenzen
+        unicode_escapes = {
+            r'\\udcc4': 'Ä', r'\\udce4': 'ä',
+            r'\\udcd6': 'Ö', r'\\udcf6': 'ö', 
+            r'\\udcdc': 'Ü', r'\\udcfc': 'ü',
+            r'\\udcdf': 'ß'
+        }
+        
+        for escape, char in unicode_escapes.items():
+            text = re.sub(escape, char, text)
+        
+        # Schritt 5: Cleanup - Entferne verbleibende Replacement Characters
+        text = re.sub(r'[�]+', '', text)  # Entferne Replacement Characters
+        text = re.sub(r'\s+', ' ', text)  # Normalisiere Whitespace
+        text = text.strip()
+        
+        return text
+    
     def _scan_folder_recursive(self, folder_path: Path, main_folder: str, current_path: Optional[List[str]] = None) -> List[Dict]:
         """Rekursive Suche nach Videos in Ordnern"""
         if current_path is None:
@@ -342,44 +415,8 @@ class YouTubeUploader:
             # Bereinige Titel (ersetze Unterstriche durch Leerzeichen und behebe Encoding-Probleme)
             title = title.replace('_', ' ').strip()
             
-            # Verwende die gleichen Encoding-Fixes wie bei normalen Videos
-            # Behebe häufige Encoding-Probleme
-            try:
-                if any(ord(c) > 127 and ord(c) < 256 for c in title):
-                    title_bytes = title.encode('latin1', errors='ignore')
-                    title = title_bytes.decode('utf-8', errors='replace')
-            except:
-                pass
-            
-            # Zusätzliche spezifische Fixes für häufige Probleme
-            encoding_fixes = {
-                'WINDMÜLE': 'WINDMÜHLE',
-                'MÜHLE': 'MÜHLE',
-                'MÜLE': 'MÜHLE',
-                '�': 'Ü',
-                '?': 'Ü',
-                'M�LE': 'MÜHLE',
-                'M�HLE': 'MÜHLE', 
-                'M?LE': 'MÜHLE',
-                'M?HLE': 'MÜHLE',
-                'WINDM�LE': 'WINDMÜHLE',
-                'WINDM?LE': 'WINDMÜHLE',
-                'H�NGT': 'HÄNGT',
-                'H?NGT': 'HÄNGT',
-                '\\udcc4': 'Ä',
-                '\\udcdc': 'Ü',
-                '\\udcf6': 'ö',
-                '\\udce4': 'ä',
-                '\\udcfc': 'ü',
-                '\\udcdf': 'ß',
-                'H\\udcc4NGT': 'HÄNGT',
-                'VIEH H\\udcc4NGT': 'VIEH HÄNGT',
-                'M\\udcdcLE': 'MÜHLE',
-                'WINDM\\udcdcLE': 'WINDMÜHLE'
-            }
-            
-            for broken, fixed in encoding_fixes.items():
-                title = title.replace(broken, fixed)
+            # Verwende die generelle Encoding-Fix-Funktion
+            title = self._fix_encoding_issues(title)
             
             # Bestimme Aufnahmedatum
             try:
@@ -451,48 +488,8 @@ class YouTubeUploader:
             # Bereinige Titel (ersetze Unterstriche durch Leerzeichen und behebe Encoding-Probleme)
             title = title.replace('_', ' ').strip()
             
-            # Behebe häufige Encoding-Probleme
-            # Zuerst versuche korrekte UTF-8 Dekodierung
-            try:
-                # Wenn der Titel bereits problematische Zeichen hat, versuche Dekodierung
-                if any(ord(c) > 127 and ord(c) < 256 for c in title):
-                    # Versuche als latin1 zu interpretieren und als utf-8 zu dekodieren
-                    title_bytes = title.encode('latin1', errors='ignore')
-                    title = title_bytes.decode('utf-8', errors='replace')
-            except:
-                pass
-            
-            # Zusätzliche spezifische Fixes für häufige Probleme
-            encoding_fixes = {
-                'WINDMÜLE': 'WINDMÜHLE',  # Korrigiere WINDMÜLE zu WINDMÜHLE
-                'MÜHLE': 'MÜHLE',         # Stelle sicher dass MÜHLE korrekt ist
-                'MÜLE': 'MÜHLE',          # Korrigiere MÜLE zu MÜHLE
-                '�': 'Ü',                # Ersetze Replacement Character
-                '?': 'Ü',                # Fallback für Fragezeichen an Ü-Positionen
-                'M�LE': 'MÜHLE',
-                'M�HLE': 'MÜHLE', 
-                'M?LE': 'MÜHLE',
-                'M?HLE': 'MÜHLE',
-                'WINDM�LE': 'WINDMÜHLE',
-                'WINDM?LE': 'WINDMÜHLE',
-                'H�NGT': 'HÄNGT',         # Korrigiere H�NGT zu HÄNGT
-                'H?NGT': 'HÄNGT',         # Fallback für H?NGT zu HÄNGT
-                # Zusätzliche Unicode-Escape-Fixes
-                '\\udcc4': 'Ä',          # Unicode escape für Ä
-                '\\udcdc': 'Ü',          # Unicode escape für Ü
-                '\\udcf6': 'ö',          # Unicode escape für ö
-                '\\udce4': 'ä',          # Unicode escape für ä
-                '\\udcfc': 'ü',          # Unicode escape für ü
-                '\\udcdf': 'ß',          # Unicode escape für ß
-                # Weitere problematische Darstellungen
-                'H\\udcc4NGT': 'HÄNGT',  # Spezifisch für diesen Fall
-                'VIEH H\\udcc4NGT': 'VIEH HÄNGT',
-                'M\\udcdcLE': 'MÜHLE',
-                'WINDM\\udcdcLE': 'WINDMÜHLE'
-            }
-            
-            for broken, fixed in encoding_fixes.items():
-                title = title.replace(broken, fixed)
+            # Verwende die generelle Encoding-Fix-Funktion
+            title = self._fix_encoding_issues(title)
             
             # Bestimme Aufnahmedatum
             try:
@@ -575,18 +572,15 @@ class YouTubeUploader:
     
     def _clean_title_for_display(self, title: str) -> str:
         """Bereinigt Titel für saubere Konsolen-Ausgabe"""
+        # Verwende die generelle Encoding-Fix-Funktion für konsistente Behandlung
+        clean_title = self._fix_encoding_issues(title)
+        
+        # Zusätzliche Bereinigung für Terminal-Ausgabe
         import re
+        # Entferne verbleibende problematische Zeichen für Terminal
+        clean_title = re.sub(r'[^\x20-\x7E\u00C0-\u017F\u00C4\u00D6\u00DC\u00E4\u00F6\u00FC\u00DF]', '', clean_title)
         
-        # Entferne Unicode-Escape-Sequenzen wie \udcc4
-        clean_title = re.sub(r'\\udc[0-9a-fA-F]{2}', '', title)
-        
-        # Entferne andere problematische Unicode-Zeichen
-        clean_title = re.sub(r'[^\x20-\x7E\u00C0-\u017F]', '', clean_title)
-        
-        # Cleanup und Normalisierung
-        clean_title = clean_title.strip()
-        
-        return clean_title if clean_title else title
+        return clean_title.strip() if clean_title.strip() else title
     
     def _categorize_videos(self, videos: List[Dict]):
         """Kategorisiert gefundene Videos für Statistiken"""
