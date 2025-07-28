@@ -23,6 +23,15 @@ for %%f in (*.mp4) do (
             
             if !errorlevel! equ 0 (
                 echo ERFOLG: Merge abgeschlossen fuer %%f
+                
+                REM Kopiere Erstelldatum und Aenderungsdatum von Original auf gemergte Datei
+                echo Kopiere Zeitstempel von Original auf gemergte Datei...
+                for %%i in ("%%f") do (
+                    set "original_date=%%~ti"
+                    powershell -Command "& {$original = Get-Item '%%f'; $merged = Get-Item 'merged_%%f'; $merged.CreationTime = $original.CreationTime; $merged.LastWriteTime = $original.LastWriteTime; $merged.LastAccessTime = $original.LastAccessTime}"
+                )
+                echo Zeitstempel erfolgreich kopiert
+                
                 REM Optional: Original-Datei loeschen
                 REM del "%%f"
             ) else (
