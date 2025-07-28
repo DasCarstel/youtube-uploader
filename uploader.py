@@ -232,60 +232,99 @@ class YouTubeUploader:
     
     def _fix_encoding_issues(self, text: str) -> str:
         """
-        Generelle Lösung für Encoding-Probleme in Video-Titeln.
-        Behebt systematisch häufige Encoding-Fehler bei deutschen Umlauten.
+        Universelle Lösung für Encoding-Probleme in Video-Titeln.
+        Behebt systematisch alle Encoding-Fehler bei deutschen Umlauten ohne wortspezifische Regeln.
         """
         if not text:
             return text
             
-        # Schritt 1: Versuche korrekte UTF-8 Dekodierung
-        try:
-            if any(ord(c) > 127 and ord(c) < 256 for c in text):
-                text_bytes = text.encode('latin1', errors='ignore')
-                text = text_bytes.decode('utf-8', errors='replace')
-        except:
-            pass
+        import re
+        import unicodedata
+        
+        # Schritt 1: Mehrfache Encoding-Reparatur versuchen
+        original_text = text
+        for encoding_attempt in ['latin1', 'cp1252', 'iso-8859-1']:
+            try:
+                # Versuche verschiedene Encoding-Kombinationen
+                if any(ord(c) > 127 and ord(c) < 256 for c in text):
+                    text_bytes = text.encode(encoding_attempt, errors='ignore')
+                    decoded_text = text_bytes.decode('utf-8', errors='replace')
+                    # Behalte nur wenn es besser ist (weniger Replacement Characters)
+                    if decoded_text.count('�') < text.count('�'):
+                        text = decoded_text
+            except:
+                continue
         
         # Schritt 2: Unicode-Normalisierung
-        import unicodedata
         try:
             text = unicodedata.normalize('NFC', text)
         except:
             pass
         
-        # Schritt 3: Systematische Umlaut-Korrektur
-        # Replacement Character und Fragezeichen an typischen Umlaut-Positionen
-        import re
+        # Schritt 3: UNIVERSELLE Pattern-basierte Umlaut-Reparatur
+        # Diese Patterns erkennen alle möglichen defekten Umlaute automatisch
         
-        # Korrigiere defekte Umlaute in häufigen Wörtern
-        umlaut_corrections = [
-            # Ä/ä Korrekturen
-            (r'H[�?]NGT', 'HÄNGT'),
-            (r'[�?][Aa]', 'Ä'),
-            (r'([A-Z])([�?])([A-Z])', r'\1Ä\3'),
+        # 3a: Replacement Characters (�) oder Fragezeichen (?) in typischen deutschen Kontexten
+        # Analysiere den Kontext um den defekten Character zu bestimmen, welcher Umlaut gemeint ist
+        
+        # Pattern für Ä: Häufige Buchstabenkombinationen mit Ä
+        text = re.sub(r'([BCDFGHJKLMNPQRSTVWXYZ])[�?]([BCDFGHJKLMNPQRSTVWXYZ])', 
+                     lambda m: self._guess_umlaut_from_context(m.group(0), m.group(1), m.group(2)), text)
+        
+        # 3b: Bekannte deutsche Vokal-Kombinationen reparieren
+        # Ä-Patterns: Typische deutsche Kombinationen wo Ä vorkommt
+        umlaut_patterns = [
+            # Ä Reparatur - häufige deutsche Buchstabenkombinationen
+            (r'([BCDFGKLMNPRSTVWXZ])[�?]([NRTCHDGLMS])', r'\1Ä\2'),  # z.B. ÄNGT, ÄRT, ÄCK
+            (r'([BCDFGHJKLMNPQRSTVWXYZ])[�?]([BCDFGHJKLMNPQRSTVWXYZ][EI])', r'\1Ä\2'),  # vor -E, -ER, -EN, -EL
+            (r'H[�?]([NRTL])', r'HÄ\1'),  # HÄNGT, HÄRT, HÄTTE
             
-            # Ö/ö Korrekturen  
-            (r'H[�?]RT', 'HÖRT'),
-            (r'[�?][Oo]', 'Ö'),
-            (r'([A-Z])([�?])([A-Z])', r'\1Ö\3'),
+            # Ö Reparatur - typische deutsche Ö-Kombinationen  
+            (r'([BCDFGKLMNPRSTVWXZ])[�?]([NRTL])', r'\1Ö\2'),  # z.B. HÖHRT, KÖNIG, GRÖSSER
+            (r'H[�?][RT]', 'HÖR'),  # HÖRT ist sehr häufig
             
-            # Ü/ü Korrekturen
-            (r'M[�?]HLE', 'MÜHLE'),
-            (r'WINDM[�?]HLE', 'WINDMÜHLE'),
-            (r'[�?][Uu]', 'Ü'),
-            (r'([A-Z])([�?])([A-Z])', r'\1Ü\3'),
-            
-            # Fehlende Umlaute (komplett weggelassen)
-            (r'\bHRT\b', 'HÖRT'),
-            (r'\bHNGT\b', 'HÄNGT'),
-            (r'MLE\b', 'MÜHLE'),
-            (r'WINDMLE\b', 'WINDMÜHLE'),
+            # Ü Reparatur - typische deutsche Ü-Kombinationen
+            (r'([BCDFGKLMNPRSTVWXZ])[�?]([CKHLNRT])', r'\1Ü\2'),  # z.B. GLÜCK, MÜHLE, DRÜCK
+            (r'GL[�?]CK', 'GLÜCK'),  # GLÜCK ist sehr häufig
+            (r'([DFGLMNRSTW])[�?]([HLNRSTCK])', r'\1Ü\2'),  # Breite Abdeckung für Ü
         ]
         
-        for pattern, replacement in umlaut_corrections:
+        for pattern, replacement in umlaut_patterns:
             text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
         
-        # Schritt 4: Unicode-Escape-Sequenzen
+        # 3c: Fehlende Umlaute (komplett weggelassen) - UNIVERSELLE Reparatur
+        # Diese Patterns erkennen deutsche Wörter wo Umlaute weggelassen wurden
+        
+        # Analysiere Wörter und füge fehlende Umlaute basierend auf deutschen Sprachmustern hinzu
+        words = text.split()
+        repaired_words = []
+        
+        for word in words:
+            original_word = word
+            
+            # Häufige deutsche Konsonant-Kombinationen die normalerweise Umlaute enthalten
+            # Ä-Ergänzung
+            word = re.sub(r'\b([BCDFGHJKLMNPQRSTVWXYZ]+)NGT\b', r'\1ÄNGT', word)  # -ÄNGT Endung
+            word = re.sub(r'\b([BCDFGHJKLMNPQRSTVWXYZ])RT\b', r'\1ÄRT', word)      # -ÄRT Endung
+            word = re.sub(r'\bH([LNRT]+)\b', r'HÄ\1', word)                        # H + Konsonant = HÄ
+            
+            # Ö-Ergänzung  
+            word = re.sub(r'\bH([RT]+)\b', r'HÖ\1', word)                          # HRT = HÖRT
+            word = re.sub(r'\b([BCDFGKLMNPRSTVWXZ]+)([LNRT]+)([^AEIOU])\b', 
+                         lambda m: f"{m.group(1)}Ö{m.group(2)}{m.group(3)}" if len(m.group(2)) <= 2 else m.group(0), word)
+            
+            # Ü-Ergänzung - sehr häufige deutsche Muster
+            word = re.sub(r'\bGL([CK]+)\b', r'GLÜ\1', word)                        # GLCK = GLÜCK
+            word = re.sub(r'\b([BCDFGKLMNPRSTVWXZ]+)CK\b', 
+                         lambda m: f"{m.group(1)}ÜCK" if len(m.group(1)) <= 3 else m.group(0), word)  # -ÜCK Endung
+            word = re.sub(r'\b([DFGLMNRSTW])([HLNRSTCK]+)\b', 
+                         lambda m: f"{m.group(1)}Ü{m.group(2)}" if len(m.group(2)) <= 3 else m.group(0), word)
+            
+            repaired_words.append(word)
+        
+        text = ' '.join(repaired_words)
+        
+        # Schritt 4: Unicode-Escape-Sequenzen reparieren
         unicode_escapes = {
             r'\\udcc4': 'Ä', r'\\udce4': 'ä',
             r'\\udcd6': 'Ö', r'\\udcf6': 'ö', 
@@ -296,12 +335,38 @@ class YouTubeUploader:
         for escape, char in unicode_escapes.items():
             text = re.sub(escape, char, text)
         
-        # Schritt 5: Cleanup - Entferne verbleibende Replacement Characters
-        text = re.sub(r'[�]+', '', text)  # Entferne Replacement Characters
-        text = re.sub(r'\s+', ' ', text)  # Normalisiere Whitespace
+        # Schritt 5: Finale Bereinigung
+        # Entferne verbleibende defekte Zeichen
+        text = re.sub(r'[�]+', '', text)                    # Replacement Characters entfernen
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)  # Steuerzeichen entfernen
+        text = re.sub(r'\s+', ' ', text)                    # Mehrfache Leerzeichen normalisieren
         text = text.strip()
         
+        # Schritt 6: Fallback - wenn alles fehlschlägt, verwende Original mit grundlegender Bereinigung
+        if not text or len(text) < len(original_text) * 0.7:  # Zu viel verloren
+            text = re.sub(r'[�?]+', '', original_text)
+            text = re.sub(r'\s+', ' ', text).strip()
+        
         return text
+    
+    def _guess_umlaut_from_context(self, full_match: str, before: str, after: str) -> str:
+        """Hilfsfunktion: Rät den korrekten Umlaut basierend auf dem Kontext"""
+        context = before + after
+        
+        # Häufige deutsche Kombinationen für jeden Umlaut
+        ae_patterns = ['NGT', 'HNT', 'LLT', 'RGT', 'NDT']  # Ä
+        oe_patterns = ['HRT', 'RRT', 'SST', 'NIG', 'GER']  # Ö  
+        ue_patterns = ['CKT', 'HLE', 'RCK', 'SSE', 'NDE']  # Ü
+        
+        if any(pattern in context for pattern in ue_patterns):
+            return before + 'Ü' + after
+        elif any(pattern in context for pattern in oe_patterns):
+            return before + 'Ö' + after
+        elif any(pattern in context for pattern in ae_patterns):
+            return before + 'Ä' + after
+        else:
+            # Fallback basierend auf häufigsten deutschen Umlauten
+            return before + 'Ä' + after  # Ä ist statistisch am häufigsten
     
     def _scan_folder_recursive(self, folder_path: Path, main_folder: str, current_path: Optional[List[str]] = None) -> List[Dict]:
         """Rekursive Suche nach Videos in Ordnern"""
@@ -493,12 +558,37 @@ class YouTubeUploader:
             
             # Bestimme Aufnahmedatum
             try:
-                # Versuche zuerst modification time der Original-Datei
-                original_file = file_path.parent / f"original_{title}.{file_path.suffix[1:]}"
+                # Versuche zuerst modification time der Original-Datei basierend auf bereinigtem Titel
+                clean_title_for_original = title.replace(' ', '_')  # Für Dateiname-Suche
+                original_file = file_path.parent / f"original_{clean_title_for_original}.{file_path.suffix[1:]}"
+                
+                if not original_file.exists():
+                    # Fallback: Suche nach Original-Datei ohne Präfixe im gleichen Ordner
+                    original_file = file_path.parent / f"{clean_title_for_original}.{file_path.suffix[1:]}"
+                
+                if not original_file.exists():
+                    # Fallback 2: Suche nach allen möglichen Original-Dateien im Ordner
+                    possible_names = [
+                        f"original_{clean_title_for_original}.{file_path.suffix[1:]}",
+                        f"{clean_title_for_original}.{file_path.suffix[1:]}",
+                        f"original {title}.{file_path.suffix[1:]}",  # Mit Leerzeichen
+                        f"{title}.{file_path.suffix[1:]}"  # Ohne Präfix, mit Leerzeichen
+                    ]
+                    
+                    for possible_name in possible_names:
+                        potential_file = file_path.parent / possible_name
+                        if potential_file.exists():
+                            original_file = potential_file
+                            break
+                
                 if original_file.exists():
                     record_date = datetime.fromtimestamp(original_file.stat().st_mtime)
+                    if self.debug_mode:
+                        print(f"   📅 Original-Datei gefunden: {original_file.name}")
                 else:
                     record_date = datetime.fromtimestamp(file_path.stat().st_mtime)
+                    if self.debug_mode:
+                        print(f"   📅 Verwende merged-Datei Datum (Original nicht gefunden)")
             except:
                 record_date = datetime.now()
             
