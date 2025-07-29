@@ -19,7 +19,7 @@ for %%f in (*.mp4) do (
         
         if !audio_count! geq 2 (
             echo Merge wird durchgefuehrt...
-            ffmpeg -i "%%f" -filter_complex "[0:a:0]loudnorm=I=-16:TP=-1.5:LRA=11,volume=0.25[a1];[0:a:1]dynaudnorm=f=150:g=31:p=0.95:m=15,loudnorm=I=-16:TP=-1.5:LRA=11[a2];[a1][a2]amerge=inputs=2[a]" -map 0:v -map "[a]" -c:v copy -c:a aac -ac 2 "merged_%%f"
+            ffmpeg -i "%%f" -filter_complex "[0:a:0]loudnorm=I=-16:TP=-1.5:LRA=11,volume=0.15[a1];[0:a:1]dynaudnorm=f=150:g=31:p=0.95:m=15,loudnorm=I=-16:TP=-1.5:LRA=11[a2];[a1][a2]amerge=inputs=2[a]" -map 0:v -map "[a]" -c:v copy -c:a aac -ac 2 "merged_%%f"
             
             if !errorlevel! equ 0 (
                 echo ERFOLG: Merge abgeschlossen fuer %%f
