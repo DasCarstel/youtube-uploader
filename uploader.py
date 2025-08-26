@@ -43,11 +43,11 @@ init(autoreset=True)
 class YouTubeUploader:
     """Hauptklasse für den YouTube Gaming Video Uploader"""
     
-    # Unterstützte Video-Formate
-    SUPPORTED_FORMATS = ['.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv']
+    # Unterstützte Video- und Audio-Formate
+    SUPPORTED_FORMATS = ['.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.aac', '.mp3', '.wav', '.m4a']
     
     # Video-Präfixe
-    VIDEO_PREFIXES = ['merged_', 'unmergable_']
+    VIDEO_PREFIXES = ['merged_', 'unmergable_', 'onlymic_', 'onlydesktop_']
     UPLOADED_PREFIX = 'uploaded_'
     
     # Haupt-Ordner
@@ -78,7 +78,9 @@ class YouTubeUploader:
             'uploaded_videos': 0,
             'failed_uploads': 0,
             'merged_videos': 0,
-            'unmergable_videos': 0
+            'unmergable_videos': 0,
+            'onlymic_videos': 0,
+            'onlydesktop_videos': 0
         }
         
         self._print_header()
@@ -418,7 +420,14 @@ class YouTubeUploader:
         folder_name = folder_path.name
         
         # Bestimme Video-Typ basierend auf Ordner-Präfix
-        video_type = 'merged' if folder_name.startswith('merged_') else 'unmergable'
+        if folder_name.startswith('merged_'):
+            video_type = 'merged'
+        elif folder_name.startswith('onlymic_'):
+            video_type = 'onlymic'
+        elif folder_name.startswith('onlydesktop_'):
+            video_type = 'onlydesktop'
+        else:
+            video_type = 'unmergable'
         
         # Entferne Präfix vom Ordnernamen für die Pfad-Struktur
         clean_folder_name = folder_name
@@ -540,7 +549,14 @@ class YouTubeUploader:
             filename = file_path.name
             
             # Bestimme Video-Typ
-            video_type = 'merged' if filename.startswith('merged_') else 'unmergable'
+            if filename.startswith('merged_'):
+                video_type = 'merged'
+            elif filename.startswith('onlymic_'):
+                video_type = 'onlymic'
+            elif filename.startswith('onlydesktop_'):
+                video_type = 'onlydesktop'
+            else:
+                video_type = 'unmergable'
             
             # Extrahiere Titel (entferne Präfix und Dateiendung)
             for prefix in self.VIDEO_PREFIXES:
@@ -677,7 +693,11 @@ class YouTubeUploader:
         for video in videos:
             if video['video_type'] == 'merged':
                 self.stats['merged_videos'] += 1
-            else:
+            elif video['video_type'] == 'onlymic':
+                self.stats['onlymic_videos'] += 1
+            elif video['video_type'] == 'onlydesktop':
+                self.stats['onlydesktop_videos'] += 1
+            else:  # unmergable
                 self.stats['unmergable_videos'] += 1
     
     def preview_videos(self, videos: List[Dict]):
@@ -689,6 +709,8 @@ class YouTubeUploader:
         print(f"\n{Fore.GREEN}🎬 {len(videos)} Video(s) bereit für Upload:")
         print(f"{Fore.GREEN}   📹 Merged Videos: {self.stats['merged_videos']}")
         print(f"{Fore.GREEN}   📼 Unmergable Videos: {self.stats['unmergable_videos']}")
+        print(f"{Fore.GREEN}   🎤 OnlyMic Videos: {self.stats['onlymic_videos']}")
+        print(f"{Fore.GREEN}   🔊 OnlyDesktop Videos: {self.stats['onlydesktop_videos']}")
         
         print(f"\n{Fore.CYAN}{'='*70}")
         print(f"{Fore.CYAN}📋 DETAILLIERTE VIDEO-ÜBERSICHT")
@@ -972,10 +994,24 @@ class YouTubeUploader:
         # Verwende bereinigten Titel falls verfügbar, sonst Original
         title_for_description = clean_title if clean_title else self._clean_title_for_display(video['title'])
         
-        description_parts = [
-            f"Gameplay Video: {title_for_description}",
-            ""
-        ]
+        # Unterschiedliche Beschreibung je nach Video-Typ
+        if video['video_type'] == 'onlymic':
+            description_parts = [
+                f"Mikrofon Audio: {title_for_description}",
+                "Nur Mikrofon-Aufnahme ohne Desktop-Audio",
+                ""
+            ]
+        elif video['video_type'] == 'onlydesktop':
+            description_parts = [
+                f"Game/Desktop Audio: {title_for_description}",
+                "Nur Game-/Desktop-Audio ohne Mikrofon",
+                ""
+            ]
+        else:
+            description_parts = [
+                f"Gameplay Video: {title_for_description}",
+                ""
+            ]
         
         # Spiel-Information hinzufügen
         if video['playlist_info']['game_folder']:
@@ -986,9 +1022,13 @@ class YouTubeUploader:
             category = video['playlist_info']['sub_folders'][-1]  # Letzter/spezifischster Unterordner
             description_parts.append(f"Kategorie: {category}")
         
-        # Video-Status hinzufügen (merged/unmergable)
+        # Video-Status hinzufügen
         if video['video_type'] == 'merged':
             description_parts.append("Status: Sound erfolgreich gemerged")
+        elif video['video_type'] == 'onlymic':
+            description_parts.append("Status: Nur Mikrofon-Audio extrahiert")
+        elif video['video_type'] == 'onlydesktop':
+            description_parts.append("Status: Nur Game/Desktop-Audio extrahiert")
         else:  # unmergable
             description_parts.append("Status: Sound war nicht mergbar (Original-Audio)")
         
@@ -1006,7 +1046,13 @@ class YouTubeUploader:
     
     def _generate_tags(self, video: Dict) -> List[str]:
         """Generiert Tags für das Video"""
-        tags = ['Gaming', 'Gameplay', 'Deutsch', "Let's Play"]
+        # Grundlegende Tags je nach Video-Typ
+        if video['video_type'] == 'onlymic':
+            tags = ['Audio', 'Mikrofon', 'Mic Only', 'Voice', 'Deutsch']
+        elif video['video_type'] == 'onlydesktop':
+            tags = ['Audio', 'Game Audio', 'Desktop Audio', 'Sound Effects', 'Gaming']
+        else:
+            tags = ['Gaming', 'Gameplay', 'Deutsch', "Let's Play"]
         
         # Spiel-Name als Tag
         if video['playlist_info']['game_folder']:
@@ -1190,6 +1236,8 @@ class YouTubeUploader:
         print(f"\n{Fore.YELLOW}📋 Video-Typen:")
         print(f"   📹 Merged Videos: {self.stats['merged_videos']}")
         print(f"   📼 Unmergable Videos: {self.stats['unmergable_videos']}")
+        print(f"   🎤 OnlyMic Videos: {self.stats['onlymic_videos']}")
+        print(f"   🔊 OnlyDesktop Videos: {self.stats['onlydesktop_videos']}")
         
         print(f"\n{Fore.CYAN}🎉 Upload-Prozess abgeschlossen!")
 
