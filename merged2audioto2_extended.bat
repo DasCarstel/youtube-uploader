@@ -34,9 +34,9 @@ for %%f in (*.mp4) do (
                 echo FEHLER beim Erstellen der merged Version von %%f
             )
             
-            REM 2. ONLY DESKTOP VERSION (nur erste Audiospur - Game/Desktop Audio)
+            REM 2. ONLY DESKTOP VERSION (nur erste Audiospur - Game/Desktop Audio - KEINE Verarbeitung)
             echo [2/3] Erstelle onlydesktop Version...
-            ffmpeg -i "%%f" -filter_complex "[0:a:0]loudnorm=I=-16:TP=-1.5:LRA=11[a]" -map 0:v -map "[a]" -c:v copy -c:a aac -ac 2 "onlydesktop_%%f"
+            ffmpeg -i "%%f" -map 0:v -map 0:a:0 -c:v copy -c:a aac "onlydesktop_%%f"
             
             if !errorlevel! equ 0 (
                 echo ERFOLG: OnlyDesktop Version erstellt
@@ -48,9 +48,9 @@ for %%f in (*.mp4) do (
                 echo FEHLER beim Erstellen der onlydesktop Version von %%f
             )
             
-            REM 3. ONLY MIC VERSION (nur zweite Audiospur - Mikrofon Audio)
+            REM 3. ONLY MIC VERSION (nur zweite Audiospur - Mikrofon Audio - KEINE Verarbeitung)
             echo [3/3] Erstelle onlymic Version...
-            ffmpeg -i "%%f" -filter_complex "[0:a:1]dynaudnorm=f=150:g=31:p=0.95:m=15,loudnorm=I=-16:TP=-1.5:LRA=11[a]" -map 0:v -map "[a]" -c:v copy -c:a aac -ac 2 "onlymic_%%f"
+            ffmpeg -i "%%f" -map 0:v -map 0:a:1 -c:v copy -c:a aac "onlymic_%%f"
             
             if !errorlevel! equ 0 (
                 echo ERFOLG: OnlyMic Version erstellt
