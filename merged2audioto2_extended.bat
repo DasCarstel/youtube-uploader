@@ -34,9 +34,9 @@ for %%f in (*.mp4) do (
                 echo FEHLER beim Erstellen der merged Version von %%f
             )
             
-            REM 2. ONLY DESKTOP VERSION (nur erste Audiospur - Game/Desktop Audio - Audio-Only)
+            REM 2. ONLY DESKTOP VERSION (nur erste Audiospur - Game/Desktop Audio - mit minimalem Video)
             echo [2/3] Erstelle onlydesktop Version...
-            ffmpeg -i "%%f" -map 0:a:0 -c:a aac -vn "onlydesktop_%%f"
+            ffmpeg -i "%%f" -f lavfi -i color=black:size=640x360:rate=1 -map 1:v -map 0:a:0 -c:v libx264 -preset ultrafast -crf 51 -pix_fmt yuv420p -r 1 -c:a aac -shortest "onlydesktop_%%f"
             
             if !errorlevel! equ 0 (
                 echo ERFOLG: OnlyDesktop Version erstellt
@@ -48,9 +48,9 @@ for %%f in (*.mp4) do (
                 echo FEHLER beim Erstellen der onlydesktop Version von %%f
             )
             
-            REM 3. ONLY MIC VERSION (nur zweite Audiospur - Mikrofon Audio - Audio-Only)
+            REM 3. ONLY MIC VERSION (nur zweite Audiospur - Mikrofon Audio - mit minimalem Video)
             echo [3/3] Erstelle onlymic Version...
-            ffmpeg -i "%%f" -map 0:a:1 -c:a aac -vn "onlymic_%%f"
+            ffmpeg -i "%%f" -f lavfi -i color=black:size=640x360:rate=1 -map 1:v -map 0:a:1 -c:v libx264 -preset ultrafast -crf 51 -pix_fmt yuv420p -r 1 -c:a aac -shortest "onlymic_%%f"
             
             if !errorlevel! equ 0 (
                 echo ERFOLG: OnlyMic Version erstellt
