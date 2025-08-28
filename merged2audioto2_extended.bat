@@ -36,28 +36,36 @@ for %%f in (*.mp4) do (
             
             REM 2. ONLY DESKTOP VERSION (nur erste Audiospur - Game/Desktop Audio - mit erstem Frame als Video)
             echo [2/3] Erstelle onlydesktop Version...
-            ffmpeg -i "%%f" -filter_complex "[0:v]scale=640:360,fps=1[v]" -map "[v]" -map 0:a:0 -c:v libx264 -preset ultrafast -crf 51 -pix_fmt yuv420p -c:a aac "onlydesktop_%%f"
+            
+            REM Erstelle onlydesktop Ordner falls nicht vorhanden
+            if not exist "onlydesktop" mkdir "onlydesktop"
+            
+            ffmpeg -i "%%f" -filter_complex "[0:v]scale=640:360,fps=1[v]" -map "[v]" -map 0:a:0 -c:v libx264 -preset ultrafast -crf 51 -pix_fmt yuv420p -c:a aac "onlydesktop\onlydesktop_%%f"
             
             if !errorlevel! equ 0 (
-                echo ERFOLG: OnlyDesktop Version erstellt
+                echo ERFOLG: OnlyDesktop Version erstellt in onlydesktop\
                 
                 REM Kopiere Zeitstempel fuer onlydesktop Version
                 echo Kopiere Zeitstempel fuer onlydesktop Version...
-                powershell -Command "& {$original = Get-Item '%%f'; $desktop = Get-Item 'onlydesktop_%%f'; $desktop.CreationTime = $original.CreationTime; $desktop.LastWriteTime = $original.LastWriteTime; $desktop.LastAccessTime = $original.LastAccessTime}"
+                powershell -Command "& {$original = Get-Item '%%f'; $desktop = Get-Item 'onlydesktop\onlydesktop_%%f'; $desktop.CreationTime = $original.CreationTime; $desktop.LastWriteTime = $original.LastWriteTime; $desktop.LastAccessTime = $original.LastAccessTime}"
             ) else (
                 echo FEHLER beim Erstellen der onlydesktop Version von %%f
             )
             
             REM 3. ONLY MIC VERSION (nur zweite Audiospur - Mikrofon Audio - mit erstem Frame als Video)
             echo [3/3] Erstelle onlymic Version...
-            ffmpeg -i "%%f" -filter_complex "[0:v]scale=640:360,fps=1[v]" -map "[v]" -map 0:a:1 -c:v libx264 -preset ultrafast -crf 51 -pix_fmt yuv420p -c:a aac "onlymic_%%f"
+            
+            REM Erstelle onlymic Ordner falls nicht vorhanden
+            if not exist "onlymic" mkdir "onlymic"
+            
+            ffmpeg -i "%%f" -filter_complex "[0:v]scale=640:360,fps=1[v]" -map "[v]" -map 0:a:1 -c:v libx264 -preset ultrafast -crf 51 -pix_fmt yuv420p -c:a aac "onlymic\onlymic_%%f"
             
             if !errorlevel! equ 0 (
-                echo ERFOLG: OnlyMic Version erstellt
+                echo ERFOLG: OnlyMic Version erstellt in onlymic\
                 
                 REM Kopiere Zeitstempel fuer onlymic Version
                 echo Kopiere Zeitstempel fuer onlymic Version...
-                powershell -Command "& {$original = Get-Item '%%f'; $mic = Get-Item 'onlymic_%%f'; $mic.CreationTime = $original.CreationTime; $mic.LastWriteTime = $original.LastWriteTime; $mic.LastAccessTime = $original.LastAccessTime}"
+                powershell -Command "& {$original = Get-Item '%%f'; $mic = Get-Item 'onlymic\onlymic_%%f'; $mic.CreationTime = $original.CreationTime; $mic.LastWriteTime = $original.LastWriteTime; $mic.LastAccessTime = $original.LastAccessTime}"
             ) else (
                 echo FEHLER beim Erstellen der onlymic Version von %%f
             )
@@ -76,8 +84,8 @@ for %%f in (*.mp4) do (
 
 echo.
 echo Verarbeitung abgeschlossen!
-echo - Dateien mit "merged_" = beide Audiospuren kombiniert
-echo - Dateien mit "onlydesktop_" = nur Game/Desktop Audio
-echo - Dateien mit "onlymic_" = nur Mikrofon Audio  
-echo - Dateien mit "unmergable_" = nur eine Audiospur gefunden
+echo - Dateien mit "merged_" = beide Audiospuren kombiniert (im Hauptordner)
+echo - Dateien mit "onlydesktop_" = nur Game/Desktop Audio (in onlydesktop\ Ordner)
+echo - Dateien mit "onlymic_" = nur Mikrofon Audio (in onlymic\ Ordner)
+echo - Dateien mit "unmergable_" = nur eine Audiospur gefunden (im Hauptordner)
 pause
